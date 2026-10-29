@@ -28,8 +28,10 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Run checks and tests
-        run: ./gradlew check
+      - name: Run unit tests and lint (all flavors)
+        run: |
+          ./gradlew testTempusDebugUnitTest testDegoogledDebugUnitTest testPlayDebugUnitTest \
+            lintTempusDebug lintDegoogledDebug lintPlayDebug
 
       - name: Publish Test Summary
         uses: test-summary/action@v2
