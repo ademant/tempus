@@ -266,7 +266,7 @@ open class UpnpControlPoint(
 
     private fun get(url: String): String? = try {
         descriptionClient.newCall(Request.Builder().url(url).build()).execute().use { response ->
-            val body = response.body
+            val body = response.body ?: return@use null
             when {
                 !response.isSuccessful -> null
                 body.source().request(MAX_DESCRIPTION_BYTES + 1) -> {
