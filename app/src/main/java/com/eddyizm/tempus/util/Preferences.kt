@@ -295,14 +295,20 @@ object Preferences {
         App.getInstance().preferences.edit().putString(USER, user).apply()
     }
 
+    // Sealed with SecretBox. Legacy plaintext is re-sealed the first time it is read.
     @JvmStatic
     fun getPassword(): String? {
-        return App.getInstance().preferences.getString(PASSWORD, null)
+        val stored = App.getInstance().preferences.getString(PASSWORD, null) ?: return null
+        if (!SecretBox.isSealed(stored)) {
+            setPassword(stored)
+            return stored
+        }
+        return SecretBox.open(stored)
     }
 
     @JvmStatic
     fun setPassword(password: String?) {
-        App.getInstance().preferences.edit().putString(PASSWORD, password).apply()
+        App.getInstance().preferences.edit().putString(PASSWORD, SecretBox.seal(password)).apply()
     }
 
     @JvmStatic
