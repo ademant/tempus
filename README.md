@@ -58,6 +58,14 @@ Please note the two variants in the release assets include release/debug and 32/
 
 🟩`app-degoogled*` <- The izzyOnDroid release that goes without any of the google stuff. It is now available on izzyOnDroid (64bit) I am releasing the both 32/64bit apk's here on github for those who need a 32bit version.
 
+## This fork
+
+This copy is developed at [ademant/tempus](https://github.com/ademant/tempus) and tracks the upstream project at [eddyizm/tempus](https://github.com/eddyizm/tempus).
+
+- [Issues](https://github.com/ademant/tempus/issues): open work, grouped by stage
+- [Pull requests](https://github.com/ademant/tempus/pulls): changes are merged through pull requests only
+- [CI runs](https://github.com/ademant/tempus/actions): the PR check runs `./gradlew check` on every pull request
+
 
 ## Features
 
