@@ -1,39 +1,57 @@
 # AGENTS.md - Tempus (Android Subsonic Client)
 
 ## Project Overview
-**Tempus** is an open-source Android music client for Subsonic servers. Two product flavors:
+**Tempus** is an open-source Android music client for Subsonic servers. Three product flavors:
 - **tempus** (`com.eddyizm.tempus`) - GitHub release with Android Auto & Chromecast
 - **degoogled** (`com.eddyizm.degoogled.tempus`) - IzzyOnDroid/F-Droid release, no Google services
+- **play** (`com.eddyizm.play.tempus`) - Google Play bundle (AAB), includes Cast
+
+## Workflow
+
+Before implementing any non-trivial change:
+1. **Discuss** the approach: explain the plan and tradeoffs, then wait for confirmation
+2. **Implement** the change on a branch, not on `main`
+3. **Verify** with the flavor-specific unit tests and lint (see Testing)
+4. **Commit** only when the user asks; reference the issue with `Closes #NNN` in the commit message or PR description so GitHub closes it on merge
+
+Skip the discussion step only for typos or single-line fixes.
+
+PR rules (target branch, screenshots, `USAGE.md` updates) are in `CONTRIBUTING.md`.
 
 ## Build & Development
 
 ### Toolchain
-- **Gradle**: 9.4.1 (wrapper)
+- **Gradle**: 9.8.0 (wrapper)
 - **AGP**: 9.2.1
-- **Kotlin**: 2.2.10
+- **Kotlin**: 2.2.20
 - **Java**: 21 (via Foojay toolchain resolver in `settings.gradle`)
-- **compileSdk/targetSdk**: 36
+- **compileSdk/targetSdk**: 37
 - **minSdk**: 24
 
 ### Key Commands
 ```bash
-# Build both release APKs (as in CI)
+# Build release APKs (as in CI) and the Play bundle
 ./gradlew assembleTempusRelease
 ./gradlew assembleDegoogledRelease
+./gradlew bundlePlayRelease
 
 # Build debug APKs (for testing)
 ./gradlew assembleTempusDebug
 ./gradlew assembleDegoogledDebug
+./gradlew assemblePlayDebug
 
 # Run unit tests (per flavor)
 ./gradlew testTempusDebugUnitTest
 ./gradlew testDegoogledDebugUnitTest
+./gradlew testPlayDebugUnitTest
 
 # Run lint (per flavor/variant)
 ./gradlew lintTempusDebug
 ./gradlew lintTempusRelease
 ./gradlew lintDegoogledDebug
 ./gradlew lintDegoogledRelease
+./gradlew lintPlayDebug
+./gradlew lintPlayRelease
 
 # Run all lint
 ./gradlew lint
@@ -58,7 +76,7 @@
 - **Language**: Kotlin (primary), some Java
 - **Architecture**: MVVM-ish with Media3/ExoPlayer for playback
 - **Key libs**: Room (DB), Retrofit/OkHttp (network), Media3/ExoPlayer (media), Glide (images), Material3
-- **Flavors**: `tempus` (Media3 Cast) vs `degoogled` (no Cast)
+- **Flavors**: `tempus` and `play` (Media3 Cast) vs `degoogled` (no Cast)
 - **Main package**: `com.eddyizm.tempus` (namespace), app IDs differ by flavor
 
 ## Testing
@@ -69,7 +87,7 @@
 
 ## CI / Release Process
 - **Prerelease** (`.github/workflows/github_prerelease.yml`): Triggered on `v*-dev*` tags, builds debug APKs, signs with release keystore
-- **Release** (`.github/workflows/github_release.yml`): Triggered on `v*` tags (non-dev), builds both release flavors, signs, creates GitHub release with APKs + ProGuard mapping files (gzipped)
+- **Release** (`.github/workflows/github_release.yml`): Triggered on `v*` tags (non-dev), builds the tempus and degoogled APKs plus the play AAB, signs them, creates GitHub release with the artifacts + ProGuard mapping files (gzipped)
 - **Signing**: Uses `r0adkll/sign-android-release` action with keystore from secrets
 - **Java**: Zulu JDK 21 in CI
 
@@ -95,15 +113,16 @@
 | Task | Command |
 |------|---------|
 | Build debug APK (tempus) | `./gradlew assembleTempusDebug` |
-| Build release APK (both) | `./gradlew assembleTempusRelease assembleDegoogledRelease` |
+| Build release APK (tempus, degoogled) | `./gradlew assembleTempusRelease assembleDegoogledRelease` |
+| Build Play bundle | `./gradlew bundlePlayRelease` |
 | Run unit tests (tempus) | `./gradlew testTempusDebugUnitTest` |
 | Run lint (all) | `./gradlew lint` |
 | Clean build | `./gradlew clean` |
 | Generate lint baseline | `./gradlew updateLintBaseline` |
 
 ## Gotchas
-- **Two app IDs**: `com.eddyizm.tempus` vs `com.eddyizm.degoogled.tempus` - debug adds `.debug` suffix
-- **Media3 Cast** only in `tempus` flavor (`tempusImplementation libs.media3.cast`)
+- **Three app IDs**: `com.eddyizm.tempus`, `com.eddyizm.degoogled.tempus`, `com.eddyizm.play.tempus` - debug adds `.debug` suffix
+- **Media3 Cast** only in `tempus` and `play` flavors (`tempusImplementation libs.media3.cast`, `playImplementation libs.media3.cast`)
 - **FFmpeg decoder** is a local AAR (`libs/lib-decoder-ffmpeg-release.aar`), built separately via `bin/build.sh`
 - **Room schemas** committed to `app/schemas/` - update on schema changes
 - **No tests in CI** - run locally before PR
@@ -121,7 +140,38 @@ $ANDROID_HOME/cmdline-tools/tools/bin/retrace app/build/outputs/mapping/tempusRe
 1. **Testing**: Manual testing on physical devices is required - avoid VM testing for network/foreground service features
 2. **Database Integrity**: `isDownloaded()` must stay authoritative (Media3 index + Room DB row); external deletes must purge the Media3 index via `DownloaderManager.remove(...)`.
 3. **Notification UX**: Single notification with correct actions, tap opens app to queue fragment
-4. **Cross-Flavour**: Test on both `tempus` and `degoogled` flavors as they have different capabilities
+4. **Cross-Flavour**: Test on all three flavors (`tempus`, `degoogled`, `play`) as they have different capabilities
+
+## Dancebrainz integration (fork-only)
+
+The Dancebrainz feature (tagging recordings with dances, regions and meters through the dancebrainz JSON API, see `~/src/dancebrainz/API.md`) lives only in this fork and must stay cherry-pickable onto other forks and onto upstream changes.
+
+Rules:
+- **All new code goes in `com.eddyizm.tempus.dancebrainz`** (`app/src/main/java/com/eddyizm/tempus/dancebrainz/`). Its own Retrofit client, models, repository and UI. Do not reuse or edit `subsonic/RetrofitClient`.
+- **Resources:** new strings in `res/values/strings_dancebrainz.xml`; new layouts and drawables prefixed `db_`. Do not add to `strings.xml` or other shared resource files.
+- **Storage:** no Room entities in the shared `AppDatabase`. Keep Dancebrainz data in a separate database file or fetch it from the API, so upstream schema migrations never conflict with it. Preferences use keys prefixed `db_` in their own preferences file.
+- **Shared-code hooks are one line each.** Every edit outside the package is a single call into the package, placed in a commit of its own whose message starts with `dancebrainz-hook:`. Current seams:
+  1. Navigation: one destination in `res/navigation/nav_graph.xml`, plus one menu item.
+  2. Settings: one entry in `SettingsContainerFragment`.
+  3. Now playing: one call from the player to read the current track's MBID.
+  4. Model: `subsonic/models/Child.kt` must parse `musicBrainzId` (not present today; needed to link playing songs to recordings).
+- **Commit discipline:** feature commits touch only the package and its resources. Hook commits touch only the seam files. Cherry-pick feature commits as a range and hooks separately, so conflicts stay in the hook lines.
+- Do not change behaviour of existing features to suit the integration. Add a seam instead.
+- Keep the feature on for all three flavors (no Google services involved).
+
+## Always
+- Run the unit tests and lint for every flavor a change touches, and for all three when touching shared code.
+- Use the `./gradlew` wrapper; don't use a system Gradle.
+- Commit updated `app/schemas/` files with any Room schema change.
+- Update `USAGE.md` for user-visible behaviour changes.
+- Test network, playback, and foreground-service changes on a physical device.
+
+## Never
+- Commit, push, or tag a release unless the user asks for it.
+- Add Cast or Google Play services code to the `degoogled` flavor.
+- Change `isDownloaded()` without keeping the Media3 index and Room row in sync.
+- Hand-edit `app/lint-baseline.xml`; regenerate it with `./gradlew updateLintBaseline`.
+- Build or sign release artifacts unless the user asks for them.
 
 Skills provide specialized instructions and workflows for specific tasks.
 Use the skill tool to load a skill when a task matches its description.
