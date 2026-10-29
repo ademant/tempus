@@ -5,7 +5,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.util.Log;
-import android.util.Base64;
 
 import androidx.annotation.OptIn;
 import androidx.lifecycle.LifecycleOwner;
@@ -19,6 +18,8 @@ import com.eddyizm.tempus.App;
 import com.eddyizm.tempus.glide.CustomGlideRequest;
 import com.eddyizm.tempus.model.Download;
 import com.eddyizm.tempus.provider.AlbumArtContentProvider;
+import com.eddyizm.tempus.provider.ArtworkIds;
+import com.eddyizm.tempus.provider.ArtworkSigner;
 import com.eddyizm.tempus.repository.DownloadRepository;
 import com.eddyizm.tempus.subsonic.models.Child;
 import com.eddyizm.tempus.subsonic.models.InternetRadioStation;
@@ -32,7 +33,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.nio.charset.StandardCharsets;
 
 @OptIn(markerClass = UnstableApi.class)
 public class MappingUtil {
@@ -315,9 +315,8 @@ public class MappingUtil {
         if (artworkUri == null) {
             String homePageUrl = internetRadioStation.getHomePageUrl();
             if (homePageUrl != null && !homePageUrl.isEmpty() && MusicUtil.isImageUrl(homePageUrl)) {
-                    String encodedUrl = Base64.encodeToString(homePageUrl.getBytes(StandardCharsets.UTF_8),
-                                    Base64.URL_SAFE | Base64.NO_WRAP);
-                    coverArtId = "ir_" + encodedUrl;
+                    coverArtId = ArtworkIds.INSTANCE.homePageId(homePageUrl,
+                            bytes -> ArtworkSigner.INSTANCE.mac(bytes));
                     artworkUri = AlbumArtContentProvider.contentUri(coverArtId);
             }
         }

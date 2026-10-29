@@ -8,7 +8,6 @@ import android.content.UriMatcher;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.ParcelFileDescriptor;
-import android.util.Base64;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -26,6 +25,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.security.MessageDigest;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -54,21 +54,29 @@ public class AlbumArtContentProvider extends ContentProvider {
     @Override
     public ParcelFileDescriptor openFile(@NonNull Uri uri, @NonNull String mode) throws FileNotFoundException {
         Context context = getContext();
-        String albumId = uri.getLastPathSegment();
+        // Every id is untrusted: other apps can open this provider. See ArtworkIds.
+        ArtworkIds.Parsed parsed = ArtworkIds.INSTANCE.parse(uri.getLastPathSegment(),
+                (urlBytes, mac) -> MessageDigest.isEqual(mac, ArtworkSigner.INSTANCE.mac(urlBytes)));
         Uri artworkUri = null;
         File localFile = null;
 
-        if (albumId != null && albumId.startsWith("rl_")) {
+        if (parsed instanceof ArtworkIds.Parsed.LocalRadioCover) {
             // Local radio cover: stored in our app-private files dir, which other processes
             // (SystemUI media controls, Android Auto) cannot open directly. Reading it here in the
             // provider's own process and piping the bytes makes it accessible cross-process.
-            localFile = RadioCoverArtDownloader.getLocalCoverFile(albumId.substring("rl_".length()));
-        } else if (albumId != null && albumId.startsWith("ir_")) {
-            String encodedUrl = albumId.substring("ir_".length());
-            String decodedUrl = new String(Base64.decode(encodedUrl, Base64.URL_SAFE | Base64.NO_WRAP));
-            artworkUri = Uri.parse(decodedUrl);
+            String stationId = ((ArtworkIds.Parsed.LocalRadioCover) parsed).getStationId();
+            File file = RadioCoverArtDownloader.getLocalCoverFile(stationId);
+            if (!stationId.equals(file.getName())) {
+                throw new FileNotFoundException("Rejected local cover id");
+            }
+            localFile = file;
+        } else if (parsed instanceof ArtworkIds.Parsed.HomePage) {
+            artworkUri = Uri.parse(((ArtworkIds.Parsed.HomePage) parsed).getUrl());
+        } else if (parsed instanceof ArtworkIds.Parsed.ServerCover) {
+            String coverId = ((ArtworkIds.Parsed.ServerCover) parsed).getId();
+            artworkUri = Uri.parse(CustomGlideRequest.createUrl(coverId, Preferences.getImageSize()));
         } else {
-            artworkUri = Uri.parse(CustomGlideRequest.createUrl(albumId, Preferences.getImageSize()));
+            throw new FileNotFoundException("Rejected artwork id");
         }
 
         final File localFileFinal = localFile;

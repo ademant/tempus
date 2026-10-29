@@ -15,6 +15,8 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.eddyizm.tempus.glide.CustomGlideRequest
 import com.eddyizm.tempus.provider.AlbumArtContentProvider
+import com.eddyizm.tempus.provider.ArtworkIds
+import com.eddyizm.tempus.provider.ArtworkSigner
 import androidx.room.Embedded
 import com.eddyizm.tempus.subsonic.models.Child
 import com.eddyizm.tempus.subsonic.models.InternetRadioStation
@@ -206,11 +208,7 @@ class SessionMediaItem() {
 
         val homePageUrl = internetRadioStation.homePageUrl
         if (homePageUrl != null && homePageUrl.isNotEmpty() && MusicUtil.isImageUrl(homePageUrl)) {
-            val encodedUrl = android.util.Base64.encodeToString(
-                homePageUrl.toByteArray(java.nio.charset.StandardCharsets.UTF_8),
-                android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP
-            )
-            coverArtId = "ir_$encodedUrl"
+            coverArtId = ArtworkIds.homePageId(homePageUrl) { ArtworkSigner.mac(it) }
         }
     }
 
