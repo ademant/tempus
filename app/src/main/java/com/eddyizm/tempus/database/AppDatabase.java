@@ -80,7 +80,9 @@ public abstract class AppDatabase extends RoomDatabase {
     public static synchronized AppDatabase getInstance() {
         if (instance == null) {
             instance = Room.databaseBuilder(App.getContext(), AppDatabase.class, DB_NAME)
-                    .fallbackToDestructiveMigration()
+                    // AppDatabase has no migrations below version 10, so installs on versions 1-9 are
+                    // rebuilt (their data is lost). From version 10 on, every upgrade must migrate or Room fails.
+                    .fallbackToDestructiveMigrationFrom(false, 1, 2, 3, 4, 5, 6, 7, 8, 9)
                     .build();
         }
 
