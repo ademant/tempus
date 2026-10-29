@@ -96,7 +96,7 @@ The first screen lists your servers. Tap **Open server editor** to add one:
 
 1. **Server name** is any name you like.
 2. **User name** and **Password** are your login for that server. Or in some cases, API key (eg LMS: https://github.com/epoupon/lms/discussions/562).
-3. **Public URL** is your server's address, starting with `http://` or `https://`, for example `https://your-subsonic-server.com`.
+3. **Public URL** is your server's address, starting with `http://` or `https://`, for example `https://your-subsonic-server.com`. Use `https://` whenever you can. Plain `http://` is accepted without extra steps only for addresses on your local network (such as `192.168.x.x`, `10.x.x.x`, `localhost` or a name like `nas.local`). For any other `http://` address, Tempus shows an **Allow unencrypted connection to this server** switch. Your login and music then travel unencrypted over the internet, so turn it on only if you accept that.
 4. **Plaintext password** sends your password with every request instead of a token. Turn it on only if your server does not accept token login.
 5. **Set a local URL** is optional and adds a **Local URL** field, see [Home and away addresses](#home-and-away-addresses).
 6. **Client certificate (mTLS)** is optional, for servers that ask for one.

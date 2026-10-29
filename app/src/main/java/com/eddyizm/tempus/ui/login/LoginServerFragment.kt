@@ -1,5 +1,7 @@
 package com.eddyizm.tempus.ui.login
 
+import androidx.core.widget.doAfterTextChanged
+import com.eddyizm.tempus.util.ServerAddressPolicy
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -153,6 +155,7 @@ class LoginServerFragment : Fragment() {
         binding.serverUserField.setText("")
         binding.serverPasswordField.setText("")
         binding.serverPublicUrlField.setText("")
+        binding.serverUnencryptedSwitch.isChecked = false
         binding.serverLocalUrlField.setText("")
         binding.serverCertField.setText("")
         binding.serverHeadersSwitch.isChecked = false
@@ -168,6 +171,7 @@ class LoginServerFragment : Fragment() {
         binding.serverUserField.setText(serverList[position].username)
         binding.serverPasswordField.setText(serverList[position].password)
         binding.serverPublicUrlField.setText(serverList[position].address)
+        binding.serverUnencryptedSwitch.isChecked = serverList[position].allowUnencrypted
 
         /* Optional field */
         val localAddress: String? = serverList[position].localAddress
@@ -223,6 +227,7 @@ class LoginServerFragment : Fragment() {
             startActivity(tempus)
             return@setOnLongClickListener true
         }
+        binding.serverPublicUrlField.doAfterTextChanged { updateUnencryptedSwitch() }
         binding.testButton.setOnClickListener {
             testConnection()
         }
@@ -340,7 +345,8 @@ class LoginServerFragment : Fragment() {
                 timestamp = System.currentTimeMillis(),
                 isLowSecurity = binding.serverPlaintextPassowrd.isChecked,
                 clientCert = binding.serverCertField.text.toString(),
-                customHeaders = binding.serverHeadersField.text.toString().trim().ifEmpty { null }
+                customHeaders = binding.serverHeadersField.text.toString().trim().ifEmpty { null },
+                allowUnencrypted = binding.serverUnencryptedSwitch.isChecked,
             )
 
             if (selectedServerPosition == 0) {
@@ -382,6 +388,10 @@ class LoginServerFragment : Fragment() {
         } else if (!urlSanitization(binding.serverPublicUrlField.text.toString())) {
             binding.serverPublicUrlField.error = errMsgUrl
             return false
+        } else if (ServerAddressPolicy.needsOptIn(binding.serverPublicUrlField.text.toString())
+            && !binding.serverUnencryptedSwitch.isChecked) {
+            binding.serverPublicUrlField.error = getString(R.string.la_server_field_unencrypted_error)
+            return false
         } else if (binding.serverLocalUrlSwitch.isChecked
             && binding.serverLocalUrlField.text.toString().isEmpty()) {
             binding.serverLocalUrlField.error = errMsgEmpty
@@ -411,7 +421,17 @@ class LoginServerFragment : Fragment() {
         return true
     }
 
+    private fun updateUnencryptedSwitch() {
+        val show = ServerAddressPolicy.needsOptIn(binding.serverPublicUrlField.text.toString())
+        binding.serverUnencryptedSwitch.visibility = if (show) View.VISIBLE else View.GONE
+    }
+
     private fun testConnection() {
+        val target = serverList[selectedServerPosition]
+        if (ServerAddressPolicy.needsOptIn(target.address) && !target.allowUnencrypted) {
+            Toast.makeText(context, getString(R.string.la_server_field_unencrypted_error), Toast.LENGTH_LONG).show()
+            return
+        }
         binding.testButton.isEnabled = false
         Toast.makeText(
             context,

@@ -41,4 +41,8 @@ data class Server(
 
     @ColumnInfo(name = "custom_headers")
     val customHeaders: String? = null,
+
+    // Set by the user for a public HTTP server. Servers saved before this column existed keep it true.
+    @ColumnInfo(name = "allow_unencrypted", defaultValue = "1")
+    val allowUnencrypted: Boolean = true,
 ) : Parcelable

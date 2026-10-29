@@ -1,5 +1,6 @@
 package com.eddyizm.tempus.glide;
 
+import com.eddyizm.tempus.util.CleartextGuard;
 import android.net.Uri;
 
 import androidx.annotation.NonNull;
@@ -107,6 +108,7 @@ public class IPv6StringLoader implements ModelLoader<String, InputStream> {
 
     private static OkHttpClient buildClient() {
         OkHttpClient.Builder builder = new OkHttpClient.Builder()
+                .addInterceptor(new CleartextGuard())
                 .connectTimeout(DEFAULT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                 .readTimeout(DEFAULT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                 .addNetworkInterceptor(ServerHeaders.createInterceptor());

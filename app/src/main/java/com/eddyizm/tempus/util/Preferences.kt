@@ -23,6 +23,7 @@ object Preferences {
     private const val TOKEN = "token"
     private const val SALT = "salt"
     private const val LOW_SECURITY = "low_security"
+    private const val ALLOW_UNENCRYPTED_SERVER = "allow_unencrypted_server"
     private const val CLIENT_CERT = "client_cert"
     private const val CUSTOM_HEADERS = "custom_headers"
     private const val BATTERY_OPTIMIZATION = "battery_optimization"
@@ -334,6 +335,17 @@ object Preferences {
     @JvmStatic
     fun isLowScurity(): Boolean {
         return App.getInstance().preferences.getBoolean(LOW_SECURITY, false)
+    }
+
+    // Servers saved before this flag existed keep working over HTTP, so the default is true.
+    @JvmStatic
+    fun isAllowUnencryptedServer(): Boolean {
+        return App.getInstance().preferences.getBoolean(ALLOW_UNENCRYPTED_SERVER, true)
+    }
+
+    @JvmStatic
+    fun setAllowUnencryptedServer(allow: Boolean) {
+        App.getInstance().preferences.edit().putBoolean(ALLOW_UNENCRYPTED_SERVER, allow).apply()
     }
 
     @JvmStatic

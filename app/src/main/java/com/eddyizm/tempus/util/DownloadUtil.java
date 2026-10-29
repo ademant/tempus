@@ -106,6 +106,7 @@ public final class DownloadUtil {
      */
     private static OkHttpClient buildCustomHeadersHttpClient() {
         OkHttpClient.Builder builder = new OkHttpClient.Builder()
+                .addInterceptor(new CleartextGuard())
                 .connectTimeout(DefaultHttpDataSource.DEFAULT_CONNECT_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)
                 .readTimeout(DefaultHttpDataSource.DEFAULT_READ_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)
                 .addNetworkInterceptor(ServerHeaders.createInterceptor());
