@@ -17,6 +17,7 @@ import com.eddyizm.tempus.subsonic.base.ApiResponse;
 import com.eddyizm.tempus.subsonic.models.Child;
 import com.eddyizm.tempus.subsonic.models.Bookmark;
 import com.eddyizm.tempus.subsonic.models.PlayQueue;
+import com.eddyizm.tempus.util.IoDispatch;
 import com.eddyizm.tempus.util.Preferences;
 import com.eddyizm.tempus.util.DownloadPreferences;
 
@@ -24,8 +25,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 import retrofit2.Call;
@@ -34,7 +33,6 @@ import retrofit2.Response;
 
 public class QueueRepository {
     private static final String TAG = "QueueRepository";
-    private static final ExecutorService dbExecutor = Executors.newSingleThreadExecutor();
 
     private final QueueDao queueDao = AppDatabase.getInstance().queueDao();
 
@@ -43,23 +41,9 @@ public class QueueRepository {
     }
 
     public List<Child> getMedia() {
-        List<Child> media = new ArrayList<>();
-
-        GetMediaThreadSafe getMedia = new GetMediaThreadSafe(queueDao);
-        Thread thread = new Thread(getMedia);
-        thread.start();
-
-        try {
-            thread.join();
-            media = getMedia.getMedia().stream()
-                    .map(Child.class::cast)
-                    .collect(Collectors.toList());
-
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        return media;
+        return IoDispatch.blockingIo(queueDao::getAllSimple).stream()
+                .map(Child.class::cast)
+                .collect(Collectors.toList());
     }
 
     public MutableLiveData<PlayQueue> getPlayQueue() {
@@ -131,7 +115,7 @@ public class QueueRepository {
      */
     public void savePlayQueueToServer(String current, long position) {
         if (!DownloadPreferences.isSyncronizationEnabled()) return;
-        dbExecutor.execute(() -> {
+        IoDispatch.launchSerial(() -> {
             List<String> ids = queueDao.getAllSimple().stream()
                     .map(Queue::getId)
                     .collect(Collectors.toList());
@@ -256,7 +240,7 @@ public class QueueRepository {
     }
 
     public void insert(Child media, boolean reset, int afterIndex) {
-        dbExecutor.execute(() -> {
+        IoDispatch.launchSerial(() -> {
             List<Queue> mediaList = new ArrayList<>();
             int insertionIndex = afterIndex;
 
@@ -292,7 +276,7 @@ public class QueueRepository {
     }
 
     public void insertAll(List<Child> toAdd, boolean reset, int afterIndex) {
-        dbExecutor.execute(() -> {
+        IoDispatch.launchSerial(() -> {
             List<Queue> media = new ArrayList<>();
             int insertionIndex = afterIndex;
 
@@ -329,32 +313,19 @@ public class QueueRepository {
     }
 
     public void delete(int position) {
-        dbExecutor.execute(() -> queueDao.delete(position));
+        IoDispatch.launchSerial(() -> queueDao.delete(position));
     }
 
     public void deleteAll() {
-        dbExecutor.execute(queueDao::deleteAll);
+        IoDispatch.launchSerial(queueDao::deleteAll);
     }
 
     public int count() {
-        int count = 0;
-
-        CountThreadSafe countThread = new CountThreadSafe(queueDao);
-        Thread thread = new Thread(countThread);
-        thread.start();
-
-        try {
-            thread.join();
-            count = countThread.getCount();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        return count;
+        return IoDispatch.blockingIo(queueDao::count);
     }
 
     public void setLastPlayedTimestamp(String id) {
-        dbExecutor.execute(() -> queueDao.setLastPlay(id, System.currentTimeMillis()));
+        IoDispatch.launchSerial(() -> queueDao.setLastPlay(id, System.currentTimeMillis()));
     }
 
     /**
@@ -366,79 +337,15 @@ public class QueueRepository {
     public void setResumePoint(String id, long positionMs) {
         // Update the queue row for the launch-restore path which reads it back from the DB.
         // (MediaManager.setResumePoint also writes the durable per-song store with metadata.)
-        dbExecutor.execute(() -> queueDao.setResumePoint(id, System.currentTimeMillis(), positionMs));
+        IoDispatch.launchSerial(() -> queueDao.setResumePoint(id, System.currentTimeMillis(), positionMs));
     }
 
     public Queue getLastPlayedMedia() {
-        GetLastPlayedMediaThreadSafe getLastPlayedMediaThreadSafe = new GetLastPlayedMediaThreadSafe(queueDao);
-        Thread thread = new Thread(getLastPlayedMediaThreadSafe);
-        thread.start();
-
-        try {
-            thread.join();
-            return getLastPlayedMediaThreadSafe.getQueueItem();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    private static class GetMediaThreadSafe implements Runnable {
-        private final QueueDao queueDao;
-        private List<Queue> media;
-
-        public GetMediaThreadSafe(QueueDao queueDao) {
-            this.queueDao = queueDao;
-        }
-
-        @Override
-        public void run() {
-            media = queueDao.getAllSimple();
-        }
-
-        public List<Queue> getMedia() {
-            return media;
-        }
-    }
-
-    private static class CountThreadSafe implements Runnable {
-        private final QueueDao queueDao;
-        private int count = 0;
-
-        public CountThreadSafe(QueueDao queueDao) {
-            this.queueDao = queueDao;
-        }
-
-        @Override
-        public void run() {
-            count = queueDao.count();
-        }
-
-        public int getCount() {
-            return count;
-        }
-    }
-
-    private static class GetLastPlayedMediaThreadSafe implements Runnable {
-        private final QueueDao queueDao;
-        private Queue lastMediaPlayed;
-
-        public GetLastPlayedMediaThreadSafe(QueueDao queueDao) {
-            this.queueDao = queueDao;
-        }
-
-        @Override
-        public void run() {
-            lastMediaPlayed = queueDao.getLastPlayed();
-        }
-
-        public Queue getQueueItem() {
-            return lastMediaPlayed;
-        }
+        return IoDispatch.blockingIo(queueDao::getLastPlayed);
     }
 
     public void deleteRange(int fromIndex, int toIndex) {
-        dbExecutor.execute(() -> {
+        IoDispatch.launchSerial(() -> {
             List<Queue> media = queueDao.getAllSimple();
             if (fromIndex < 0 || toIndex > media.size() || fromIndex >= toIndex) return;
             media.subList(fromIndex, toIndex).clear();

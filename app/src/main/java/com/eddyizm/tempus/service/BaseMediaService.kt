@@ -25,14 +25,16 @@ import com.eddyizm.tempus.repository.QueueRepository
 import com.eddyizm.tempus.ui.activity.MainActivity
 import com.eddyizm.tempus.util.*
 import com.eddyizm.tempus.util.SleepTimerManager
-import com.google.common.util.concurrent.FutureCallback
-import com.google.common.util.concurrent.Futures
-import com.google.common.util.concurrent.ListenableFuture
-import com.google.common.util.concurrent.MoreExecutors
-import java.util.concurrent.Callable
-import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import retrofit2.Call
 import com.eddyizm.tempus.util.PlaybackPreferences
 import com.eddyizm.tempus.util.ServerPreferences
@@ -55,6 +57,7 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
     private lateinit var bitmapLoader: SyncBitmapLoader
     private val audio = PlaybackAudio(this) { baseContext }
     private val widgetUpdateHandler = Handler(Looper.getMainLooper())
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val widgetUpdater = WidgetUpdater(this, widgetUpdateHandler) { mediaLibrarySession.player }
     private val radioProbe = RadioHeaderProbe(widgetUpdateHandler, { mediaLibrarySession.player }, widgetUpdater)
     private val playerErrors = PlayerErrorRecovery()
@@ -132,37 +135,36 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
         }
         if (itemsToProcess.isEmpty()) return
 
-        val delegate = Executors.newSingleThreadExecutor()
-        val executor = MoreExecutors.listeningDecorator(delegate)
-        val future: ListenableFuture<List<Pair<Int, MediaItem>>> = executor.submit(Callable {
-            itemsToProcess.mapNotNull { (i, old) ->
-                val mapped = MappingUtil.mapMediaItem(old)
-                if (mapped.requestMetadata.mediaUri != old.requestMetadata.mediaUri) {
-                    Pair(i, mapped)
-                } else null
+        serviceScope.launch {
+            val updates = try {
+                withContext(Dispatchers.IO) {
+                    itemsToProcess.mapNotNull { (i, old) ->
+                        val mapped = MappingUtil.mapMediaItem(old)
+                        if (mapped.requestMetadata.mediaUri != old.requestMetadata.mediaUri) {
+                            Pair(i, mapped)
+                        } else null
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                Log.e(TAG, "updateMediaItems failed", t)
+                return@launch
             }
-        })
-        delegate.shutdown()
 
-        Futures.addCallback(future, object : FutureCallback<List<Pair<Int, MediaItem>>> {
-            override fun onSuccess(updates: List<Pair<Int, MediaItem>>) {
-                widgetUpdateHandler.post {
-                    // Same hazard as restorePlayerFromQueue: the mapping runs on a background
-                    // thread, so this post can land after onDestroy released the player.
-                    if (serviceDestroyed) return@post
-                    updates.forEach { (i, mapped) ->
-                        if (i > player.currentMediaItemIndex
-                            && i < player.mediaItemCount
-                            && player.getMediaItemAt(i).mediaId == mapped.mediaId) {
-                            player.replaceMediaItem(i, mapped)
-                        }
+            widgetUpdateHandler.post {
+                // Same hazard as restorePlayerFromQueue: the mapping runs on a background
+                // thread, so this post can land after onDestroy released the player.
+                if (serviceDestroyed) return@post
+                updates.forEach { (i, mapped) ->
+                    if (i > player.currentMediaItemIndex
+                        && i < player.mediaItemCount
+                        && player.getMediaItemAt(i).mediaId == mapped.mediaId) {
+                        player.replaceMediaItem(i, mapped)
                     }
                 }
             }
-            override fun onFailure(t: Throwable) {
-                Log.e(TAG, "updateMediaItems failed", t)
-            }
-        }, MoreExecutors.directExecutor())
+        }
     }
 
     // MediaManager.QueueTarget: null once the service is destroyed, so a queue edit that
@@ -224,19 +226,19 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
 
         // Map off the main thread: mapMediaItems does a blocking lookup per song, so a
         // large saved queue froze the UI on launch (#600).
-        Thread {
+        serviceScope.launch(Dispatchers.IO) {
             while (ConnectionUtil.pingsOutstanding()) {
-                if (serviceDestroyed) return@Thread
-                Thread.sleep(25)
+                if (serviceDestroyed) return@launch
+                delay(25)
             }
 
             val addressWhenMapped = ServerPreferences.getInUseServerAddress()
             val queueRepository = QueueRepository()
             val storedQueue = queueRepository.media
-            if (storedQueue.isNullOrEmpty()) return@Thread
+            if (storedQueue.isNullOrEmpty()) return@launch
 
             val mediaItems = MappingUtil.mapMediaItems(storedQueue)
-            if (mediaItems.isEmpty()) return@Thread
+            if (mediaItems.isEmpty()) return@launch
 
             val lastPlayed = try {
                 queueRepository.lastPlayedMedia
@@ -268,7 +270,7 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
                 player.prepare()
                 widgetUpdater.update(player)
             }
-        }.start()
+        }
     }
 
 
@@ -396,6 +398,7 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
     override fun onDestroy() {
         QueuePreloader.cancel()
         serviceDestroyed = true
+        serviceScope.cancel()
         // Process scoped, so it outlives the service unless it is cleared here.
         MediaServiceExtensionRegistry.handler = null
         FavoriteRegistry.onChange = null

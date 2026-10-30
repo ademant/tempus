@@ -28,6 +28,7 @@ import com.eddyizm.tempus.subsonic.models.ResponseStatus;
 import com.eddyizm.tempus.subsonic.models.SubsonicResponse;
 import com.eddyizm.tempus.util.DownloadRepair;
 import com.eddyizm.tempus.util.DownloadUtil;
+import com.eddyizm.tempus.util.IoDispatch;
 import com.eddyizm.tempus.util.ServerPreferences;
 
 import java.util.ArrayList;
@@ -54,7 +55,7 @@ public class PlaylistRepository {
     }
 
     private void handleMissingPlaylist(String id, Runnable onMissing) {
-        new Thread(() -> {
+        IoDispatch.launch(() -> {
             // Must delete dependent records first to avoid foreign key constraint violations
             playlistSongDao.deleteForPlaylist(id);
             pinnedPlaylistDao.unpin(id);
@@ -66,7 +67,7 @@ public class PlaylistRepository {
                 new Handler(Looper.getMainLooper()).post(onMissing);
             }
             refreshAllPlaylists();
-        }).start();
+        });
     }
 
     @androidx.media3.common.util.UnstableApi
@@ -74,7 +75,6 @@ public class PlaylistRepository {
     private final PlaylistDao playlistDao = AppDatabase.getInstance().playlistDao();
     private final PlaylistSongDao playlistSongDao = AppDatabase.getInstance().playlistSongDao();
     private final SyncedPlaylistDao syncedPlaylistDao = AppDatabase.getInstance().syncedPlaylistDao();
-    private static final java.util.concurrent.ExecutorService SYNCED_WRITES = java.util.concurrent.Executors.newSingleThreadExecutor();
     private static volatile String keptSyncRanFor;
     private static final MutableLiveData<List<Playlist>> allPlaylistsLiveData = new MutableLiveData<>();
 
@@ -110,7 +110,7 @@ public class PlaylistRepository {
 
     @OptIn(markerClass = UnstableApi.class)
     private void cacheAllPlaylists(List<Playlist> playlists) {
-        new Thread(() -> {
+        IoDispatch.launch(() -> {
             // Remove playlists from DB that are not in the new list
             List<Playlist> cachedPlaylists = playlistDao.getAllSync();
             if (cachedPlaylists != null) {
@@ -132,7 +132,7 @@ public class PlaylistRepository {
             }
             playlistDao.insertAll(playlists);
             android.util.Log.d("PlaylistRepository", "Cached " + playlists.size() + " playlists to local DB.");
-        }).start();
+        });
     }
 
     public MutableLiveData<List<Playlist>> getPlaylists(boolean random, int size) {
@@ -246,7 +246,7 @@ public class PlaylistRepository {
     }
 
     private void cachePlaylistSongs(Playlist playlist, List<Child> songs) {
-        new Thread(() -> {
+        IoDispatch.launch(() -> {
             String playlistId = playlist.getId();
             // playlist_song has a foreign key to playlist.id, so the playlist row must
             // exist before its songs are inserted. The full-list path caches playlists via
@@ -283,11 +283,11 @@ public class PlaylistRepository {
             playlistSongDao.deleteForPlaylist(playlistId);
             playlistSongDao.insertAll(playlistSongs);
             android.util.Log.d("PlaylistRepository", "Cached " + playlistSongs.size() + " songs for playlist " + playlistId);
-        }).start();
+        });
     }
 
     private void fetchCachedPlaylistSongs(String playlistId, MutableLiveData<List<Child>> liveData) {
-        new Thread(() -> {
+        IoDispatch.launch(() -> {
             List<PlaylistSong> cached = playlistSongDao.getSongsForPlaylistSync(playlistId);
             if (cached != null && !cached.isEmpty()) {
                 List<Child> songs = new ArrayList<>();
@@ -305,7 +305,7 @@ public class PlaylistRepository {
                 }
                 liveData.postValue(songs);
             }
-        }).start();
+        });
     }
 
     public MutableLiveData<Playlist> getPlaylist(String id) {
@@ -361,7 +361,7 @@ public class PlaylistRepository {
             if (callback != null) callback.onAllSkipped();
             return;
         }
-        new Thread(() -> {
+        IoDispatch.launch(() -> {
             Boolean isPublic = Boolean.TRUE.equals(playlistVisibilityIsPublic)
                     ? Boolean.TRUE
                     : visibilityToSend(playlistId);
@@ -383,7 +383,7 @@ public class PlaylistRepository {
                             if (callback != null) callback.onFailure();
                         }
                     });
-        }).start();
+        });
     }
 
     /**
@@ -408,7 +408,7 @@ public class PlaylistRepository {
     public void removeSongFromPlaylist(String playlistId, int index, AddToPlaylistCallback callback) {
         ArrayList<Integer> indexes = new ArrayList<>();
         indexes.add(index);
-        new Thread(() -> {
+        IoDispatch.launch(() -> {
             App.getSubsonicClientInstance(false)
                     .getPlaylistClient()
                     .updatePlaylist(playlistId, null, visibilityToSend(playlistId), null, indexes)
@@ -427,7 +427,7 @@ public class PlaylistRepository {
                             if (callback != null) callback.onFailure();
                         }
                     });
-        }).start();
+        });
     }
 
     public void addSongToPlaylist(String playlistId, ArrayList<String> songsId, Boolean playlistVisibilityIsPublic) {
@@ -442,7 +442,7 @@ public class PlaylistRepository {
     }
 
     public void updatePlaylist(String playlistId, String name, ArrayList<String> songsId, PlaylistActionCallback callback) {
-        new Thread(() -> {
+        IoDispatch.launch(() -> {
             App.getSubsonicClientInstance(false)
                     .getPlaylistClient()
                     .updatePlaylist(playlistId, name, visibilityToSend(playlistId), null, null)
@@ -462,7 +462,7 @@ public class PlaylistRepository {
                             if (callback != null) callback.onFailure();
                         }
                     });
-        }).start();
+        });
     }
 
     /**
@@ -521,30 +521,30 @@ public class PlaylistRepository {
 
     @OptIn(markerClass = UnstableApi.class)
     private void updateLocalPlaylistName(String id, String newName) {
-        new Thread(() -> {
+        IoDispatch.launch(() -> {
             playlistDao.updateName(id, newName);
-        }).start();
+        });
     }
 
     @OptIn(markerClass = UnstableApi.class)
     public void updateLastPlayed(String playlistId) {
-        new Thread(() -> {
+        IoDispatch.launch(() -> {
             playlistDao.updateLastPlayed(playlistId, System.currentTimeMillis());
-        }).start();
+        });
     }
 
     @OptIn(markerClass = UnstableApi.class)
     public void pin(String id) {
-        new Thread(() -> {
+        IoDispatch.launch(() -> {
             pinnedPlaylistDao.pin(id);
-        }).start();
+        });
     }
 
     @OptIn(markerClass = UnstableApi.class)
     public void unpin(String id) {
-        new Thread(() -> {
+        IoDispatch.launch(() -> {
             pinnedPlaylistDao.unpin(id);
-        }).start();
+        });
     }
 
     // Keyed by the server URL, not the server id preference, which only one of the two login screens writes.
@@ -561,8 +561,8 @@ public class PlaylistRepository {
             android.util.Log.w("PlaylistRepository", "No server address in use, keep synced not saved for " + id);
             return false;
         }
-        // One writer thread keeps a fast on then off in order.
-        SYNCED_WRITES.execute(() -> {
+        // The serial writer keeps a fast on then off in order.
+        IoDispatch.launchSerial(() -> {
             if (kept) {
                 syncedPlaylistDao.add(id, server);
             } else {
@@ -580,7 +580,7 @@ public class PlaylistRepository {
         // Once per server per app open, and a failed fetch hands the gate back so an offline open does not spend it.
         if (server.equals(keptSyncRanFor)) return;
         keptSyncRanFor = server;
-        new Thread(() -> {
+        IoDispatch.launch(() -> {
             List<Playlist> kept = syncedPlaylistDao.getAllSynced(server);
             if (kept.isEmpty()) return;
 
@@ -600,7 +600,7 @@ public class PlaylistRepository {
                     });
                 }
             });
-        }).start();
+        });
     }
 
     public static void resetKeptSync() {
@@ -625,12 +625,12 @@ public class PlaylistRepository {
                     public void onResponse(@NonNull Call<ApiResponse> call, @NonNull Response<ApiResponse> response) {
                         if (isAccepted(response)) {
                             String server = ServerPreferences.getServer();
-                            new Thread(() -> {
+                            IoDispatch.launch(() -> {
                                 playlistSongDao.deleteForPlaylist(playlistId);
                                 if (server != null) syncedPlaylistDao.remove(playlistId, server);
                                 playlistDao.deleteById(playlistId);
                                 android.util.Log.d("PlaylistRepository", "Deleted playlist " + playlistId + " and its songs from local DB.");
-                            }).start();
+                            });
                             notifyPlaylistChanged();
                             if (callback != null) callback.onSuccess();
                         } else {
@@ -649,18 +649,19 @@ public class PlaylistRepository {
         return pinnedPlaylistDao.getAllPinnedIds();
     }
 
+    /**
+     * Makes sure a playlist has a cached row without touching one that is already there. A replace
+     * would overwrite every column of an existing row, and pinning has no business rewriting a row
+     * it did not fetch.
+     */
     @androidx.media3.common.util.UnstableApi
     public void insertIfAbsent(Playlist playlist) {
-        InsertIfAbsentThreadSafe insert = new InsertIfAbsentThreadSafe(playlistDao, playlist);
-        Thread thread = new Thread(insert);
-        thread.start();
+        IoDispatch.launch(() -> playlistDao.insertIfAbsent(playlist));
     }
 
     @androidx.media3.common.util.UnstableApi
     public void delete(Playlist playlist) {
-        DeleteThreadSafe delete = new DeleteThreadSafe(playlistDao, playlist);
-        Thread thread = new Thread(delete);
-        thread.start();
+        IoDispatch.launch(() -> playlistDao.delete(playlist));
     }
 
     @androidx.media3.common.util.UnstableApi
@@ -670,7 +671,7 @@ public class PlaylistRepository {
 
     @androidx.media3.common.util.UnstableApi
     public void updatePinnedPlaylists(List<String> forceIds) {
-        new Thread(() -> {
+        IoDispatch.launch(() -> {
             List<Playlist> pinned = playlistDao.getAllSync();
             if (pinned != null && !pinned.isEmpty()) {
                 App.getSubsonicClientInstance(false)
@@ -681,7 +682,7 @@ public class PlaylistRepository {
                             public void onResponse(@NonNull Call<ApiResponse> call, @NonNull Response<ApiResponse> response) {
                                 if (response.isSuccessful() && response.body() != null && response.body().getSubsonicResponse().getPlaylists() != null && response.body().getSubsonicResponse().getPlaylists().getPlaylists() != null) {
                                     List<Playlist> remotes = response.body().getSubsonicResponse().getPlaylists().getPlaylists();
-                                    new Thread(() -> {
+                                    IoDispatch.launch(() -> {
                                         for (Playlist p : pinned) {
                                             for (Playlist r : remotes) {
                                                 if (p.getId().equals(r.getId())) {
@@ -694,7 +695,7 @@ public class PlaylistRepository {
                                                 }
                                             }
                                         }
-                                    }).start();
+                                    });
                                 }
                             }
 
@@ -703,41 +704,6 @@ public class PlaylistRepository {
                             }
                         });
             }
-        }).start();
-    }
-
-    /**
-     * Makes sure a playlist has a cached row without touching one that is already there. A replace
-     * would overwrite every column of an existing row, and pinning has no business rewriting a row
-     * it did not fetch.
-     */
-    private static class InsertIfAbsentThreadSafe implements Runnable {
-        private final PlaylistDao playlistDao;
-        private final Playlist playlist;
-
-        public InsertIfAbsentThreadSafe(PlaylistDao playlistDao, Playlist playlist) {
-            this.playlistDao = playlistDao;
-            this.playlist = playlist;
-        }
-
-        @Override
-        public void run() {
-            playlistDao.insertIfAbsent(playlist);
-        }
-    }
-
-    private static class DeleteThreadSafe implements Runnable {
-        private final PlaylistDao playlistDao;
-        private final Playlist playlist;
-
-        public DeleteThreadSafe(PlaylistDao playlistDao, Playlist playlist) {
-            this.playlistDao = playlistDao;
-            this.playlist = playlist;
-        }
-
-        @Override
-        public void run() {
-            playlistDao.delete(playlist);
-        }
+        });
     }
 }
