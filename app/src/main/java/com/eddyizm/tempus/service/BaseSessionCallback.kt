@@ -22,8 +22,13 @@ import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import com.eddyizm.tempus.App
 import com.eddyizm.tempus.R
+import com.eddyizm.tempus.subsonic.awaitOrNull
 import com.eddyizm.tempus.subsonic.base.ApiResponse
 import com.eddyizm.tempus.subsonic.models.ResponseStatus
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import com.eddyizm.tempus.util.Constants
 import com.eddyizm.tempus.util.PlaybackPreferences
 import com.eddyizm.tempus.util.FavoriteRegistry
@@ -31,9 +36,6 @@ import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
 
 private const val TAG = "BaseSessionCallback"
 
@@ -186,6 +188,7 @@ open class BaseSessionCallback(
     private var currentSession: MediaSession? = null
 
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private val layoutUpdate =
         Runnable { currentSession?.let { updateMediaNotificationCustomLayout(it) } }
@@ -396,41 +399,39 @@ open class BaseSessionCallback(
 
         val future = SettableFuture.create<SessionResult>()
 
-        networkCall.enqueue(object : Callback<ApiResponse?> {
-            @OptIn(UnstableApi::class)
-            override fun onResponse(call: Call<ApiResponse?>, response: Response<ApiResponse?>) {
-                val refused = response.body()?.subsonicResponse?.status == ResponseStatus.FAILED
-
-                if (response.isSuccessful && !refused) {
-                    FavoriteRegistry.accept(record)
-
-                    for (i in 0 until session.player.mediaItemCount) {
-                        val mediaItem = session.player.getMediaItemAt(i)
-                        if (mediaItem.mediaId == mediaId) {
-                            val newMetadata = mediaItem.mediaMetadata.buildUpon()
-                                .setUserRating(HeartRating(isStarring)).build()
-                            session.player.replaceMediaItem(
-                                i,
-                                mediaItem.buildUpon().setMediaMetadata(newMetadata).build()
-                            )
-                        }
-                    }
-                    updateMediaNotificationCustomLayout(session)
-                    future.set(SessionResult(SessionResult.RESULT_SUCCESS))
-                } else {
-                    if (refused) FavoriteRegistry.strike(record) else FavoriteRegistry.withdraw(record)
-                    updateMediaNotificationCustomLayout(session)
-                    future.set(SessionResult(if (refused) SessionError(SessionError.ERROR_UNKNOWN, "The server refused the change") else SessionError(response.code(), response.message())))
-                }
-            }
-
-            @OptIn(UnstableApi::class)
-            override fun onFailure(call: Call<ApiResponse?>, t: Throwable) {
+        scope.launch {
+            val response = networkCall.awaitOrNull()
+            if (response == null) {
                 FavoriteRegistry.withdraw(record)
                 updateMediaNotificationCustomLayout(session)
                 future.set(SessionResult(SessionError(SessionError.ERROR_UNKNOWN, "An error has occurred")))
+                return@launch
             }
-        })
+
+            val refused = response.body()?.subsonicResponse?.status == ResponseStatus.FAILED
+
+            if (response.isSuccessful && !refused) {
+                FavoriteRegistry.accept(record)
+
+                for (i in 0 until session.player.mediaItemCount) {
+                    val mediaItem = session.player.getMediaItemAt(i)
+                    if (mediaItem.mediaId == mediaId) {
+                        val newMetadata = mediaItem.mediaMetadata.buildUpon()
+                            .setUserRating(HeartRating(isStarring)).build()
+                        session.player.replaceMediaItem(
+                            i,
+                            mediaItem.buildUpon().setMediaMetadata(newMetadata).build()
+                        )
+                    }
+                }
+                updateMediaNotificationCustomLayout(session)
+                future.set(SessionResult(SessionResult.RESULT_SUCCESS))
+            } else {
+                if (refused) FavoriteRegistry.strike(record) else FavoriteRegistry.withdraw(record)
+                updateMediaNotificationCustomLayout(session)
+                future.set(SessionResult(if (refused) SessionError(SessionError.ERROR_UNKNOWN, "The server refused the change") else SessionError(response.code(), response.message())))
+            }
+        }
 
         return future
     }
