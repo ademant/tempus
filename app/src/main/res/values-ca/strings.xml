@@ -55,7 +55,7 @@
     <string name="album_page_release_dates_label">Publicació: %1$s, originalment: %2$s</string>
     <string name="album_page_shuffle_button">Reprodueix aleatòriament</string>
     <string name="album_page_tracks_count_and_duration">%1$d cançons  •  %2$d minuts</string>
-    <string name="app_name">Tempus</string>
+    <string name="app_name">tempus danz</string>
     <string name="artist_adapter_radio_station_starting">S\'està cercant...</string>
     <string name="artist_bottom_sheet_instant_mix">Mescla instantània</string>
     <string name="artist_bottom_sheet_shuffle">Reprodueix aleatòriament</string>

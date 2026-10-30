@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="album_page_tracks_count_and_duration">%1$d pistas  •  %2$d minutos</string>
-    <string name="app_name">Tempus</string>
+    <string name="app_name">tempus danz</string>
     <string name="aa_starred_tracks">★ Pistas</string>
     <string name="aa_discovery_mix">Mix de descubrimiento</string>
     <string name="activity_battery_optimizations_conclusion">Si tienes problemas, visita https://dontkillmyapp.com. Ofrece instrucciones detalladas para desactivar características de ahorro de energía que podrían afectar al rendimiento de la app.</string>

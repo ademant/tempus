@@ -54,7 +54,7 @@
     <string name="album_page_release_dates_label">Veröffentlicht %1$s, ursprünglich %2$s</string>
     <string name="album_page_shuffle_button">Zufall</string>
     <string name="album_page_tracks_count_and_duration">%1$d Lieder  •  %2$d Minuten</string>
-    <string name="app_name">Tempus</string>
+    <string name="app_name">tempus danz</string>
     <string name="artist_adapter_radio_station_starting">Suchen…</string>
     <string name="artist_bottom_sheet_add_to_playlist">Zu Wiedergabeliste hinzufügen</string>
     <string name="artist_bottom_sheet_loading_tracks">Lade Titel\u2026</string>
