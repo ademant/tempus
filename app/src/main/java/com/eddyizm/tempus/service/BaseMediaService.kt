@@ -104,17 +104,7 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
         checkRadioHttpHeaders()
     }
 
-    private val queueSyncHandler = Handler(Looper.getMainLooper())
-    private var hasPlayedSinceRestore = false
-    private val queueSyncRunnable = object : Runnable {
-        override fun run() {
-            if (serviceDestroyed) return
-            saveQueueNow()
-            if (mediaLibrarySession.player.isPlaying) {
-                queueSyncHandler.postDelayed(this, Constants.QUEUE_SYNC_INTERVAL_MS)
-            }
-        }
-    }
+    private val queueSync = QueueSync(currentPlayer = { mediaLibrarySession.player }, isDestroyed = { serviceDestroyed })
     private val binder = LocalBinder()
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -339,7 +329,7 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
                 if (mediaItem == null) return
                 if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ||
                     reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) {
-                    scheduleQueueSync()
+                    queueSync.schedule()
                 }
                 ReplayGainUtil.applyGain(player, mediaItem)
 
@@ -537,7 +527,7 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 Log.d(TAG, "onIsPlayingChanged " + player.currentMediaItemIndex + " isPlaying=" + isPlaying)
-                if (isPlaying) hasPlayedSinceRestore = true
+                if (isPlaying) queueSync.markPlayed()
                 if (!isPlaying) {
                     MediaManager.setResumePoint(
                         player.currentMediaItem,
@@ -554,11 +544,11 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
                 if (isPlaying) {
                     widgetUpdater.schedule()
                     scheduleRadioHeaderChecks()
-                    scheduleQueueSync()
+                    queueSync.schedule()
                 } else {
                     widgetUpdater.stop()
                     stopRadioHeaderChecks()
-                    queueSyncHandler.removeCallbacks(queueSyncRunnable)
+                    queueSync.pause()
                 }
                 widgetUpdater.update(player)
             }
@@ -586,7 +576,7 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
             ) {
                 Log.d(TAG, "onPositionDiscontinuity reason=$reason old=${oldPosition.mediaItemIndex} new=${newPosition.mediaItemIndex}")
                 super.onPositionDiscontinuity(oldPosition, newPosition, reason)
-                if (reason == Player.DISCONTINUITY_REASON_SEEK) scheduleQueueSync()
+                if (reason == Player.DISCONTINUITY_REASON_SEEK) queueSync.schedule()
                 // Save the resume point of the track we're leaving whenever we move to a
                 // different track, so coming back to it later resumes where it was. (Pause
                 // is handled separately in onIsPlayingChanged; this covers switching tracks
@@ -766,7 +756,7 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
         equalizerManager.release(exoplayer.audioSessionId)
         ReplayGainUtil.release()
         widgetUpdater.stop()
-        queueSyncHandler.removeCallbacks(queueSyncRunnable)
+        queueSync.pause()
         stopRadioHeaderChecks()
         SleepTimerManager.getInstance().stopEndOfTrackPoller()
         SleepTimerManager.getInstance().setServiceActionListener(null)
@@ -881,21 +871,6 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
 
     private fun releaseNetworkCallback() {
         getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(networkCallback)
-    }
-
-    private fun scheduleQueueSync() {
-        queueSyncHandler.removeCallbacks(queueSyncRunnable)
-        val blocked = !DownloadPreferences.isSyncronizationEnabled()
-        if (blocked) return
-        if (!hasPlayedSinceRestore) return
-        queueSyncHandler.postDelayed(queueSyncRunnable, QUEUE_SYNC_DEBOUNCE_MS)
-    }
-
-    private fun saveQueueNow() {
-        val player = mediaLibrarySession.player
-        player.currentMediaItem?.mediaId?.let { id ->
-            QueueRepository().savePlayQueueToServer(id, player.currentPosition)
-        }
     }
 
     private fun scheduleRadioHeaderChecks() {
@@ -1167,5 +1142,4 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
         }
     }
 }
-private const val QUEUE_SYNC_DEBOUNCE_MS = 2000L
 private const val RADIO_HEADER_CHECK_INTERVAL_SECONDS = 30L // Reduced frequency - only fallback when ICY fails
