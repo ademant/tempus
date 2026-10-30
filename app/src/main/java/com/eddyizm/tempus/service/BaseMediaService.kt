@@ -3,71 +3,37 @@ package com.eddyizm.tempus.service
 import android.app.PendingIntent
 import android.app.PendingIntent.FLAG_IMMUTABLE
 import android.app.PendingIntent.FLAG_UPDATE_CURRENT
-import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.net.ConnectivityManager
-import android.net.Network
-import android.net.NetworkCapabilities
 import android.os.Binder
-import android.os.Bundle
 import android.os.IBinder
-import android.os.SystemClock
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.media3.common.*
-import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
-import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.audio.AudioSink
-import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import androidx.media3.session.*
 import androidx.media3.session.MediaSession.ControllerInfo
-import androidx.media3.extractor.metadata.icy.IcyInfo
-import androidx.media3.extractor.metadata.id3.TextInformationFrame
-import androidx.media3.extractor.metadata.vorbis.VorbisComment
 import com.eddyizm.tempus.App
-import com.eddyizm.tempus.equalizer.BuiltinBackend
-import com.eddyizm.tempus.equalizer.EqualizerBackend
 import com.eddyizm.tempus.equalizer.EqualizerManager
-import com.eddyizm.tempus.equalizer.ExternalBackend
-import com.eddyizm.tempus.equalizer.DefaultBackend
-import com.eddyizm.tempus.equalizer.ParametricBackend
-import com.eddyizm.tempus.equalizer.ParametricEqAudioProcessor
-import androidx.mediarouter.media.MediaRouter
 import com.eddyizm.tempus.repository.QueueRepository
-import com.eddyizm.tempus.subsonic.base.ApiResponse
-import com.eddyizm.tempus.subsonic.utils.CacheUtil
-import com.eddyizm.tempus.upnp.UpnpControlPoint
-import com.eddyizm.tempus.upnp.UpnpDevice
-import com.eddyizm.tempus.upnp.UpnpPlayer
-import com.eddyizm.tempus.upnp.UpnpRouteProvider
-import com.eddyizm.tempus.upnp.UpnpRoutesGate
 import com.eddyizm.tempus.ui.activity.MainActivity
 import com.eddyizm.tempus.util.*
 import com.eddyizm.tempus.util.SleepTimerManager
-import com.eddyizm.tempus.widget.WidgetUpdateManager
 import com.google.common.util.concurrent.FutureCallback
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
-import java.net.HttpURLConnection
-import java.net.URL
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
-import com.eddyizm.tempus.util.DownloadPreferences
 import com.eddyizm.tempus.util.PlaybackPreferences
 import com.eddyizm.tempus.util.ServerPreferences
 import com.eddyizm.tempus.util.StreamingPreferences
@@ -86,56 +52,39 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
     protected lateinit var exoplayer: ExoPlayer
     protected lateinit var mediaLibrarySession: MediaLibrarySession
     protected var sessionCallback: MediaLibrarySession.Callback? = null
-    private var upnpRouteProvider: UpnpRouteProvider? = null
-    private var upnpPlayer: UpnpPlayer? = null
     private lateinit var bitmapLoader: SyncBitmapLoader
-    private lateinit var networkCallback: CustomNetworkCallback
-    private lateinit var equalizerManager: EqualizerManager
-    private val parametricEqProcessor = ParametricEqAudioProcessor()
+    private val audio = PlaybackAudio(this) { baseContext }
     private val widgetUpdateHandler = Handler(Looper.getMainLooper())
-    private var widgetUpdateScheduled = false
+    private val widgetUpdater = WidgetUpdater(this, widgetUpdateHandler) { mediaLibrarySession.player }
+    private val radioProbe = RadioHeaderProbe(widgetUpdateHandler, { mediaLibrarySession.player }, widgetUpdater)
+    private val playerErrors = PlayerErrorRecovery()
+    private val networkMonitor = NetworkAddressMonitor(
+        context = this,
+        handler = widgetUpdateHandler,
+        isDestroyed = { serviceDestroyed },
+        currentPlayer = { mediaLibrarySession.player },
+        exoPlayer = { exoplayer },
+        recovery = playerErrors,
+        updateMediaItems = { updateMediaItems(it) },
+    )
+
+    internal var stoppedSinceError: Boolean
+        get() = playerErrors.stoppedSinceError
+        set(value) {
+            playerErrors.stoppedSinceError = value
+        }
+    private val upnpRouting = UpnpRouting(
+        context = this,
+        localPlayer = { exoplayer },
+        sessionPlayer = { mediaLibrarySession.player },
+        switchPlayer = { from, to -> setPlayer(from, to) },
+        attachListener = { initializePlayerListener(it) },
+    )
     // Set in onDestroy. restorePlayerFromQueue maps the saved queue on a background thread and
     // posts the player calls back to this handler; if the service is destroyed mid map (the app
     // swiped away during launch), that post must not touch the now released player.
     @Volatile private var serviceDestroyed = false
-    private var lastResumeSaveAt = 0L
-    private val widgetUpdateRunnable = object : Runnable {
-        override fun run() {
-            val player = mediaLibrarySession.player
-            if (!player.isPlaying) {
-                widgetUpdateScheduled = false
-                return
-            }
-            // Keep the resume point (and server bookmark) live during playback so it
-            // never sits stale if a track is let to play without pausing or switching.
-            val now = SystemClock.elapsedRealtime()
-            if (now - lastResumeSaveAt >= RESUME_SAVE_INTERVAL_MS) {
-                lastResumeSaveAt = now
-                MediaManager.setResumePoint(player.currentMediaItem, player.currentPosition)
-            }
-            updateWidget(player)
-            widgetUpdateHandler.postDelayed(this, WIDGET_UPDATE_INTERVAL_MS)
-        }
-    }
-
-    private val radioHeaderCheckExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
-    private var radioHeaderCheckScheduled = false
-    private var radioHeaderCheckFuture: ScheduledFuture<*>? = null
-    private val radioHeaderCheckRunnable = Runnable {
-        checkRadioHttpHeaders()
-    }
-
-    private val queueSyncHandler = Handler(Looper.getMainLooper())
-    private var hasPlayedSinceRestore = false
-    private val queueSyncRunnable = object : Runnable {
-        override fun run() {
-            if (serviceDestroyed) return
-            saveQueueNow()
-            if (mediaLibrarySession.player.isPlaying) {
-                queueSyncHandler.postDelayed(this, Constants.QUEUE_SYNC_INTERVAL_MS)
-            }
-        }
-    }
+    private val queueSync = QueueSync(currentPlayer = { mediaLibrarySession.player }, isDestroyed = { serviceDestroyed })
     private val binder = LocalBinder()
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -259,19 +208,13 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
                 if (w < req.insertPos || w >= req.insertPos + req.count) base.add(w)
                 w = timeline.getNextWindowIndex(w, Player.REPEAT_MODE_OFF, true)
             }
-            val curPos = base.indexOf(current)
-            if (curPos < 0) {
+            val newOrder = PlayNextOrder.splice(base, current, req.insertPos, req.count)
+            if (newOrder == null) {
                 playNextQueue.removeFirst()
                 continue
             }
-
-            val newOrder = ArrayList<Int>(req.target)
-            newOrder.addAll(base)
-            for (j in 0 until req.count) {
-                newOrder.add(curPos + 1 + j, req.insertPos + j)
-            }
             player.shuffleOrder = DefaultShuffleOrder(newOrder.toIntArray(), Random.nextLong())
-            Log.d(TAG, "playNextFixup: ${req.count} item(s) moved to shuffle position ${curPos + 1}")
+            Log.d(TAG, "playNextFixup: ${req.count} item(s) moved after the current shuffle position")
             playNextQueue.removeFirst()
         }
     }
@@ -323,373 +266,30 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
                 }
                 player.setMediaItems(mediaItems, lastIndex, lastPosition)
                 player.prepare()
-                updateWidget(player)
+                widgetUpdater.update(player)
             }
         }.start()
     }
 
-    private var lastRadioArtist: String? = null
-    private var lastRadioTitle: String? = null
-
-    // Throttle for onPlayerError re-prepare recovery (see #682).
-    private var lastPlayerErrorRecoveryMs = 0L
-    private val playerErrorRecoveryThrottleMs = 5_000L
-
-    internal var stoppedSinceError = false
-    private var restartableUntilMs = 0L
-    private val restartAfterErrorWindowMs = 60_000L
 
     fun initializePlayerListener(player: Player) {
-        player.addListener(object : Player.Listener {
-            override fun onPlayerError(error: PlaybackException) {
-                // A network switch (WiFi <-> mobile) surfaces here as a source/network
-                // error. Without recovery the player goes idle and stays silent until the
-                // app is restarted (issue #682). Re-prepare to resume from the current
-                // position, but only for recoverable IO errors and throttled so a permanent
-                // failure (bad URL, auth) can't spin in an endless prepare loop.
-                Log.w(TAG, "onPlayerError: ${error.errorCodeName}", error)
-
-                val recoverable = when (error.errorCode) {
-                    PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
-                    PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
-                    PlaybackException.ERROR_CODE_IO_UNSPECIFIED -> true
-                    else -> false
-                }
-                val now = android.os.SystemClock.elapsedRealtime()
-                restartableUntilMs = now + restartAfterErrorWindowMs
-                if (!recoverable) return
-                networkCallback.recheckAfterPlayerError()
-
-                if (!stoppedSinceError && now - lastPlayerErrorRecoveryMs >= playerErrorRecoveryThrottleMs) {
-                    lastPlayerErrorRecoveryMs = now
-                    player.prepare()
-                }
-            }
-
-            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                Log.d(TAG, "onMediaItemTransition" + player.currentMediaItemIndex)
-                if (mediaItem == null) return
-                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ||
-                    reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) {
-                    scheduleQueueSync()
-                }
-                ReplayGainUtil.applyGain(player, mediaItem)
-
-                // --- Add for AA : Constants.AA_START_INDEX if présent ---
-                val extras = mediaItem.mediaMetadata.extras
-                val startIndex = extras?.getInt(Constants.AA_START_INDEX, -1) ?: -1
-                if (startIndex >= 0 ) {
-                    val cleanExtras = Bundle(extras).apply {
-                        remove(Constants.AA_START_INDEX)
-                    }
-                    val newMetadata = mediaItem.mediaMetadata.buildUpon()
-                        .setExtras(cleanExtras)
-                        .build()
-                    val currentIdx = player.currentMediaItemIndex
-                    if (player is ExoPlayer && currentIdx != C.INDEX_UNSET) {
-                        player.replaceMediaItem(
-                            currentIdx,
-                            mediaItem.buildUpon().setMediaMetadata(newMetadata).build()
-                        )
-                    }
-                    if (startIndex in 0 until player.mediaItemCount && startIndex != currentIdx) {
-                        player.seekTo(startIndex, 0L)
-                    }
-                }
-                // --- End add for AA ---
-                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK || reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
-                    MediaManager.setLastPlayedTimestamp(mediaItem)
-                }
-
-                // Safety net: if a track transition fires while end-of-track is armed
-                // (e.g. stream with unknown duration that ended before the poller could
-                // trigger the fade), abort any in-progress fade and pause immediately.
-                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO &&
-                    SleepTimerManager.getInstance().isEndOfTrack) {
-                    SleepTimerManager.getInstance().stopEndOfTrackPoller()
-                    SleepTimerManager.getInstance().cancelTimer()
-                    player.volume = 1f
-                    player.pause()
-                }
-
-                // Restart header checks for radio streams when media item changes
-                val mediaType = mediaItem.mediaMetadata.extras?.getString("type")
-                if (mediaType == Constants.MEDIA_TYPE_RADIO && player.isPlaying) {
-                    stopRadioHeaderChecks()
-                    scheduleRadioHeaderChecks()
-                } else if (mediaType != Constants.MEDIA_TYPE_RADIO) {
-                    stopRadioHeaderChecks()
-                }
-
-                updateWidget(player)
-                QueuePreloader.preload(this@BaseMediaService, player)
-            }
-
-            override fun onTimelineChanged(timeline: Timeline, reason: Int) {
-                Log.d(TAG, "onTimelineChanged reason=$reason")
-                tryApplyPlayNextFixup()
-                try {
-                    ReplayGainUtil.prefetchQueueGains(player)
-                } catch (t: Throwable) {
-                    Log.w(TAG, "prefetchQueueGains failed: $t")
-                }
-                QueuePreloader.preload(this@BaseMediaService, player)
-                if (timeline.isEmpty) return
-                val window = Timeline.Window()
-                for (i in 0 until timeline.windowCount) {
-                    timeline.getWindow(i, window)
-                    window.mediaItem.mediaMetadata.artworkUri?.let { bitmapLoader.prewarm(it) }
-                }
-            }
-
-            override fun onTracksChanged(tracks: Tracks) {
-                Log.d(TAG, "onTracksChanged: " + player.currentMediaItemIndex)
-                ReplayGainUtil.setReplayGain(player, tracks)
-                val currentMediaItem = player.currentMediaItem
-                if (currentMediaItem != null) {
-                    val item = MappingUtil.mapMediaItem(currentMediaItem)
-                    if (item.mediaMetadata.extras != null)
-                        MediaManager.scrobble(item, false)
-
-                    val handled = MediaServiceExtensionRegistry.handler
-                        ?.handle(player, currentMediaItem, this@BaseMediaService)
-                        ?: false
-
-                    if (player.nextMediaItemIndex == C.INDEX_UNSET) {
-                        if (!handled && PlaybackPreferences.isContinuousPlayEnabled()) {
-                            MediaManager.continuousPlay(currentMediaItem, this@BaseMediaService)
-                        }
-                    }
-                }
-
-                if (player is ExoPlayer) {
-                    // https://stackoverflow.com/questions/56937283/exoplayer-shuffle-doesnt-reproduce-all-the-songs
-                    if (MediaManager.justStarted.get()) {
-                        Log.d(TAG, "update shuffle order")
-                        MediaManager.justStarted.set(false)
-                        val shuffledList = IntArray(player.mediaItemCount) { i -> i }
-                        shuffledList.shuffle()
-                        val index = shuffledList.indexOf(player.currentMediaItemIndex)
-                        // swap current media index to the first index
-                        if (index > -1 && shuffledList.isNotEmpty()) {
-                            val tmp = shuffledList[0]
-                            shuffledList[0] = shuffledList[index]
-                            shuffledList[index] = tmp
-                        }
-                        player.shuffleOrder =
-                            DefaultShuffleOrder(shuffledList, Random.nextLong())
-                    }
-                }
-            }
-
-            override fun onMetadata(metadata: Metadata) {
-                // Handle streaming metadata (ICY, ID3) for radio / streaming content
-                val currentItem = player.currentMediaItem ?: return
-                val extras = currentItem.mediaMetadata.extras
-                if (extras?.getString("type") != Constants.MEDIA_TYPE_RADIO) return
-
-                var artist: String? = null
-                var title: String? = null
-
-                // Extract metadata from ICY/ID3/Vorbis
-                for (i in 0 until metadata.length()) {
-                    when (val entry = metadata[i]) {
-                        is IcyInfo -> {
-                            entry.title?.let { icyTitle ->
-                                val parts = icyTitle.split(" - ", limit = 2)
-                                if (parts.size == 2) {
-                                    artist = parts[0].trim().ifEmpty { null }
-                                    title = parts[1].trim().ifEmpty { null }
-                                } else {
-                                    title = icyTitle.trim().ifEmpty { null }
-                                }
-                            }
-                        }
-                        is TextInformationFrame -> {
-                            @Suppress("DEPRECATION")
-                            val value = entry.value
-                            when (entry.id) {
-                                "TPE1" -> if (!value.isNullOrBlank()) artist = value
-                                "TIT2" -> if (!value.isNullOrBlank()) title = value
-                            }
-                        }
-                        is VorbisComment -> {
-                            @Suppress("DEPRECATION")
-                            val value = entry.value
-                            when (entry.key) {
-                                "ARTIST" -> if (!value.isNullOrBlank()) artist = value
-                                "TITLE" -> if (!value.isNullOrBlank()) title = value
-                            }
-                        }
-                    }
-                }
-
-                if (artist.isNullOrBlank() && title.isNullOrBlank()) return
-                if (artist == lastRadioArtist && title == lastRadioTitle) return // Deduplicate
-                
-                lastRadioArtist = artist
-                lastRadioTitle = title
-
-                // Stop HTTP header checks since we have embedded metadata
-                stopRadioHeaderChecks()
-
-                val currentIndex = player.currentMediaItemIndex
-                if (currentIndex == C.INDEX_UNSET) return
-
-                val metadataBuilder = currentItem.mediaMetadata.buildUpon()
-                val newExtras = Bundle(extras ?: Bundle())
-
-                // Store individual values in extras for UI
-                artist?.let { newExtras.putString("radioArtist", it) }
-                title?.let { newExtras.putString("radioTitle", it) }
-
-                // Get station name (preserve if already set)
-                val stationName = extras?.getString("stationName")
-                    ?: currentItem.mediaMetadata.title?.toString()
-                    ?: ""
-                if (stationName.isNotBlank()) {
-                    newExtras.putString("stationName", stationName)
-                }
-
-                // Format for notification/player: Title = "Artist - Song", Artist = "Station Name"
-                val formattedTitle = when {
-                    !artist.isNullOrBlank() && !title.isNullOrBlank() -> "$artist - $title"
-                    !title.isNullOrBlank() -> title
-                    !artist.isNullOrBlank() -> artist
-                    else -> stationName
-                }
-
-                metadataBuilder.setTitle(formattedTitle)
-                if (stationName.isNotBlank()) {
-                    metadataBuilder.setArtist(stationName)
-                }
-
-                (player as? ExoPlayer)?.let { exo ->
-                    exo.replaceMediaItem(currentIndex, currentItem.buildUpon()
-                        .setMediaMetadata(metadataBuilder.setExtras(newExtras).build())
-                        .build())
-                    updateWidget(exo)
-                }
-            }
-
-            override fun onIsPlayingChanged(isPlaying: Boolean) {
-                Log.d(TAG, "onIsPlayingChanged " + player.currentMediaItemIndex + " isPlaying=" + isPlaying)
-                if (isPlaying) hasPlayedSinceRestore = true
-                if (!isPlaying) {
-                    MediaManager.setResumePoint(
-                        player.currentMediaItem,
-                        player.currentPosition
-                    )
-                    // Auto-push the queue + position to the server so resume works
-                    // without a manual button press.
-                    player.currentMediaItem?.mediaId?.let { id ->
-                        QueueRepository().savePlayQueueToServer(id, player.currentPosition)
-                    }
-                } else {
-                    MediaManager.scrobble(player.currentMediaItem, false)
-                }
-                if (isPlaying) {
-                    scheduleWidgetUpdates()
-                    scheduleRadioHeaderChecks()
-                    scheduleQueueSync()
-                } else {
-                    stopWidgetUpdates()
-                    stopRadioHeaderChecks()
-                    queueSyncHandler.removeCallbacks(queueSyncRunnable)
-                }
-                updateWidget(player)
-            }
-
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                Log.d(TAG, "onPlaybackStateChanged")
-                super.onPlaybackStateChanged(playbackState)
-                if (playbackState != Player.STATE_IDLE) stoppedSinceError = false
-                if (!player.hasNextMediaItem() &&
-                    playbackState == Player.STATE_ENDED &&
-                    player.mediaMetadata.extras?.getString("type") == Constants.MEDIA_TYPE_MUSIC
-                ) {
-                    MediaManager.scrobble(player.currentMediaItem, true)
-                    MediaManager.saveChronology(player.currentMediaItem)
-                    // Last track played to completion - drop it from Continue listening.
-                    MediaManager.deleteResumePoint(player.currentMediaItem)
-                }
-                updateWidget(player)
-            }
-
-            override fun onPositionDiscontinuity(
-                oldPosition: Player.PositionInfo,
-                newPosition: Player.PositionInfo,
-                reason: Int
-            ) {
-                Log.d(TAG, "onPositionDiscontinuity reason=$reason old=${oldPosition.mediaItemIndex} new=${newPosition.mediaItemIndex}")
-                super.onPositionDiscontinuity(oldPosition, newPosition, reason)
-                if (reason == Player.DISCONTINUITY_REASON_SEEK) scheduleQueueSync()
-                // Save the resume point of the track we're leaving whenever we move to a
-                // different track, so coming back to it later resumes where it was. (Pause
-                // is handled separately in onIsPlayingChanged; this covers switching tracks
-                // while still playing, where no pause fires.) Skip natural auto-transition,
-                // where the track already ended, so a finished track doesn't grab a near-end
-                // resume point.
-                if (oldPosition.mediaItemIndex != newPosition.mediaItemIndex &&
-                    reason != Player.DISCONTINUITY_REASON_AUTO_TRANSITION) {
-                    oldPosition.mediaItem?.let {
-                        MediaManager.setResumePoint(it, oldPosition.positionMs)
-                    }
-                }
-
-                // Re-apply gain whenever we stay on the same track for any reason
-                // except an automatic transition to the next track.
-                if (reason != Player.DISCONTINUITY_REASON_AUTO_TRANSITION &&
-                    oldPosition.mediaItemIndex == newPosition.mediaItemIndex) {
-                    // Clear pending gain immediately (main thread) before reapplying.
-                    // This pre-empts the same-format gapless promotion in onFlush: if
-                    // the decoder ran ahead (endOfStreamPending=true) before the seek,
-                    // hasPendingFlushGain being false when onFlush fires ensures we
-                    // restore to the correct current-track baseline instead of applying
-                    // the next track's gain mid-track.
-                    ReplayGainUtil.getAudioProcessor().clearPendingGain()
-                    ReplayGainUtil.reapplyCurrentTrackGain(player)
-                }
-
-                if (reason == Player.DISCONTINUITY_REASON_AUTO_TRANSITION) {
-                    if (oldPosition.mediaItem?.mediaMetadata?.extras?.getString("type") == Constants.MEDIA_TYPE_MUSIC) {
-                        MediaManager.scrobble(oldPosition.mediaItem, true)
-                        MediaManager.saveChronology(oldPosition.mediaItem)
-                    }
-                    // The old track played to completion - drop it from Continue listening.
-                    MediaManager.deleteResumePoint(oldPosition.mediaItem)
-
-                    if (newPosition.mediaItem?.mediaMetadata?.extras?.getString("type") == Constants.MEDIA_TYPE_MUSIC) {
-                        MediaManager.setLastPlayedTimestamp(newPosition.mediaItem)
-                    }
-                } else if (reason == Player.DISCONTINUITY_REASON_SEEK && oldPosition.mediaItemIndex != newPosition.mediaItemIndex) {
-                    // SEEK only: scrobble a genuine user skip, not other index changes such as removing the currently playing track (REMOVE).
-                    if (oldPosition.mediaItem?.mediaMetadata?.extras?.getString("type") == Constants.MEDIA_TYPE_MUSIC) {
-                        val durationMs = ((oldPosition.mediaItem?.mediaMetadata?.extras?.getInt("duration") ?: 0).toLong()) * 1000L
-                        if (MediaManager.meetsScrobbleThreshold(oldPosition.positionMs, durationMs)) {
-                            MediaManager.scrobble(oldPosition.mediaItem, true)
-                            MediaManager.saveChronology(oldPosition.mediaItem)
-                        }
-                    }
-                }
-            }
-
-            override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
-                PlaybackPreferences.setShuffleModeEnabled(shuffleModeEnabled)
-            }
-
-            override fun onRepeatModeChanged(repeatMode: Int) {
-                PlaybackPreferences.setRepeatMode(repeatMode)
-            }
-
-            override fun onAudioSessionIdChanged(audioSessionId: Int) {
-                Log.d(TAG, "onAudioSessionIdChanged")
-                equalizerManager.attach(audioSessionId)
-                sendBroadcast(Intent(ACTION_EQUALIZER_UPDATED))
-            }
-        })
+        player.addListener(
+            PlayerEventHandler(
+                service = this,
+                player = player,
+                widgetUpdater = widgetUpdater,
+                queueSync = queueSync,
+                radioProbe = radioProbe,
+                recovery = playerErrors,
+                network = networkMonitor,
+                audio = audio,
+                bitmapLoader = { bitmapLoader },
+                tryPlayNextFixup = { tryApplyPlayNextFixup() },
+                sendEqualizerUpdated = { sendBroadcast(Intent(ACTION_EQUALIZER_UPDATED)) },
+            )
+        )
         if (player.isPlaying) {
-            scheduleWidgetUpdates()
+            widgetUpdater.schedule()
         }
     }
 
@@ -752,69 +352,9 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
         (sessionCallback as? BaseSessionCallback)?.handlePlayerChanged(oldPlayer, newPlayer)
     }
 
-    /** Offers renderers as routes and moves playback onto one through [setPlayer], as Cast does. */
-    private fun initializeUpnpRoutes() {
-        val controlPoint = upnpControlPoint
-        val provider = UpnpRouteProvider(this, controlPoint)
-        provider.selectionListener = object : UpnpRouteProvider.SelectionListener {
-            override fun onRendererSelected(device: UpnpDevice) {
-                val previous = upnpPlayer
-                val player = UpnpPlayer(controlPoint, device, mainLooper, context = this@BaseMediaService)
-                upnpPlayer = player
-                initializePlayerListener(player)
-                setPlayer(mediaLibrarySession.player, player)
-                // The unselect that follows names the old renderer, so it is released here.
-                previous?.release()
-            }
-
-            override fun onRendererUnselected(device: UpnpDevice) {
-                val player = upnpPlayer ?: return
-                if (player.device != device) return
-                upnpPlayer = null
-                setPlayer(player, exoplayer)
-                // Paused, as when Bluetooth headphones drop, so ending the cast does not start the phone's speaker.
-                exoplayer.playWhenReady = false
-                player.release()
-            }
-        }
-        MediaRouter.getInstance(this).addProvider(provider)
-        upnpRouteProvider = provider
-    }
-
-    // One per service, so turning the UPnP switch off and on again does not leave an HTTP client behind each time.
-    private val upnpControlPoint by lazy { UpnpControlPoint() }
-
     // The UPnP switch is read at start and on every change, so turning it off takes effect without a restart.
     private val upnpSwitchListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key == Preferences.UPNP_ENABLED) applyUpnpSwitch()
-    }
-
-    private fun applyUpnpSwitch() {
-        when (UpnpRoutesGate.change(ServerPreferences.isUpnpEnabled(), upnpRouteProvider != null)) {
-            UpnpRoutesGate.Change.REGISTER -> initializeUpnpRoutes()
-            UpnpRoutesGate.Change.RELEASE -> {
-                // Bring playback home first, or the renderer keeps playing with nothing left to control it.
-                // Paused there, since a settings switch should not start the phone's speaker by itself.
-                upnpPlayer?.let {
-                    setPlayer(it, exoplayer)
-                    exoplayer.playWhenReady = false
-                }
-                releaseUpnpRoutes()
-            }
-            UpnpRoutesGate.Change.NONE -> Unit
-        }
-    }
-
-    private fun releaseUpnpRoutes() {
-        upnpRouteProvider?.let { provider ->
-            provider.selectionListener = null
-            MediaRouter.getInstance(this).removeProvider(provider)
-            provider.release()
-        }
-        upnpRouteProvider = null
-        // Left playing on the renderer otherwise, with nothing left to control it.
-        upnpPlayer?.release()
-        upnpPlayer = null
+        if (key == Preferences.UPNP_ENABLED) upnpRouting.applyUpnpSwitch()
     }
 
     open fun releasePlayers() {
@@ -844,7 +384,7 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
         playerInitHook()
         initializeEqualizer()
         initializeNetworkListener()
-        applyUpnpSwitch()
+        upnpRouting.applyUpnpSwitch()
         App.getInstance().preferences.registerOnSharedPreferenceChangeListener(upnpSwitchListener)
         restorePlayerFromQueue(mediaLibrarySession.player)
     }
@@ -860,17 +400,17 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
         MediaServiceExtensionRegistry.handler = null
         FavoriteRegistry.onChange = null
         releaseNetworkCallback()
-        equalizerManager.release(exoplayer.audioSessionId)
+        audio.releaseEqualizer(exoplayer.audioSessionId)
         ReplayGainUtil.release()
-        stopWidgetUpdates()
-        queueSyncHandler.removeCallbacks(queueSyncRunnable)
-        stopRadioHeaderChecks()
+        widgetUpdater.stop()
+        queueSync.pause()
+        radioProbe.stop()
         SleepTimerManager.getInstance().stopEndOfTrackPoller()
         SleepTimerManager.getInstance().setServiceActionListener(null)
-        radioHeaderCheckExecutor.shutdown()
+        radioProbe.shutdown()
         if (::bitmapLoader.isInitialized) bitmapLoader.shutdown()
         App.getInstance().preferences.unregisterOnSharedPreferenceChangeListener(upnpSwitchListener)
-        releaseUpnpRoutes()
+        upnpRouting.release()
         releasePlayers()
         mediaLibrarySession.release()
         super.onDestroy()
@@ -887,7 +427,7 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
 
     private fun initializeExoPlayer() {
         exoplayer = ExoPlayer.Builder(this)
-            .setRenderersFactory(getRenderersFactory())
+            .setRenderersFactory(audio.renderersFactory())
             .setMediaSourceFactory(getMediaSourceFactory())
             .setAudioAttributes(AudioAttributes.DEFAULT, true)
             .setHandleAudioBecomingNoisy(true)
@@ -901,36 +441,22 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
     }
 
     private fun getPlaybackParameters(speed: Float): PlaybackParameters {
-        val pitch = if (PlaybackPreferences.isPlaybackSpeedPitchEnabled()) getAdjustedPitch(speed) else 1.0f
+        val pitch = PlaybackSpeedPolicy.pitchFor(
+            speed,
+            PlaybackPreferences.isPlaybackSpeedPitchEnabled(),
+            PlaybackPreferences.isPlaybackSpeedManualPitchEnabled(),
+            PlaybackPreferences.getPlaybackSpeedManualPitch(),
+        )
         return PlaybackParameters(speed, pitch)
     }
 
-    private fun getAdjustedPitch(speed: Float): Float {
-        return if (PlaybackPreferences.isPlaybackSpeedManualPitchEnabled()) {
-            PlaybackPreferences.getPlaybackSpeedManualPitch()
-        } else {
-            speed
-        }
-    }
-
-    private fun buildBackend(): EqualizerBackend =
-        when (PlaybackPreferences.getSelectedEqualizer()) {
-            1 -> BuiltinBackend()
-            2 -> ExternalBackend()
-            3 -> ParametricBackend(parametricEqProcessor)
-            else -> DefaultBackend()
-        }
-
     private fun initializeEqualizer() {
-        equalizerManager = EqualizerManager(buildBackend(), baseContext)
-        equalizerManager.attach(exoplayer.audioSessionId)
+        audio.attachEqualizer(exoplayer.audioSessionId)
         sendBroadcast(Intent(ACTION_EQUALIZER_UPDATED))
     }
 
     fun reloadEqualizer() {
-        equalizerManager.release(exoplayer.audioSessionId)
-        equalizerManager = EqualizerManager(buildBackend(), baseContext)
-        equalizerManager.attach(exoplayer.audioSessionId)
+        audio.reloadEqualizer(exoplayer.audioSessionId)
         sendBroadcast(Intent(ACTION_RELOAD_EQUALIZER))
     }
 
@@ -959,9 +485,8 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
     }
 
     private fun initializeNetworkListener() {
-        networkCallback = CustomNetworkCallback()
         getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(
-            networkCallback
+            networkMonitor
         )
         updateMediaItems(mediaLibrarySession.player)
     }
@@ -980,332 +505,14 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
     }
 
     private fun releaseNetworkCallback() {
-        getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(networkCallback)
-    }
-
-    private fun updateWidget(player: Player) {
-        val mi = player.currentMediaItem
-        val title = mi?.mediaMetadata?.title?.toString()
-            ?: mi?.mediaMetadata?.extras?.getString("title")
-        val artist = mi?.mediaMetadata?.artist?.toString()
-            ?: mi?.mediaMetadata?.extras?.getString("artist")
-        val album = mi?.mediaMetadata?.albumTitle?.toString()
-            ?: mi?.mediaMetadata?.extras?.getString("album")
-        val extras = mi?.mediaMetadata?.extras
-        val coverId = extras?.getString("coverArtId")
-        val songLink = extras?.getString("assetLinkSong")
-            ?: AssetLinkUtil.buildLink(AssetLinkUtil.TYPE_SONG, extras?.getString("id"))
-        val albumLink = extras?.getString("assetLinkAlbum")
-            ?: AssetLinkUtil.buildLink(AssetLinkUtil.TYPE_ALBUM, extras?.getString("albumId"))
-        val artistLink = extras?.getString("assetLinkArtist")
-            ?: AssetLinkUtil.buildLink(AssetLinkUtil.TYPE_ARTIST, extras?.getString("artistId"))
-        val position = player.currentPosition.takeIf { it != C.TIME_UNSET } ?: 0L
-        val duration = player.duration.takeIf { it != C.TIME_UNSET } ?: 0L
-        WidgetUpdateManager.updateFromState(
-            this,
-            title ?: "",
-            artist ?: "",
-            album ?: "",
-            coverId,
-            player.isPlaying,
-            player.shuffleModeEnabled,
-            player.repeatMode,
-            position,
-            duration,
-            songLink,
-            albumLink,
-            artistLink
-        )
-    }
-
-    private fun scheduleQueueSync() {
-        queueSyncHandler.removeCallbacks(queueSyncRunnable)
-        val blocked = !DownloadPreferences.isSyncronizationEnabled()
-        if (blocked) return
-        if (!hasPlayedSinceRestore) return
-        queueSyncHandler.postDelayed(queueSyncRunnable, QUEUE_SYNC_DEBOUNCE_MS)
-    }
-
-    private fun saveQueueNow() {
-        val player = mediaLibrarySession.player
-        player.currentMediaItem?.mediaId?.let { id ->
-            QueueRepository().savePlayQueueToServer(id, player.currentPosition)
-        }
-    }
-
-    private fun scheduleWidgetUpdates() {
-        if (widgetUpdateScheduled) return
-        widgetUpdateHandler.postDelayed(widgetUpdateRunnable, WIDGET_UPDATE_INTERVAL_MS)
-        widgetUpdateScheduled = true
-    }
-
-    private fun stopWidgetUpdates() {
-        if (!widgetUpdateScheduled) return
-        widgetUpdateHandler.removeCallbacks(widgetUpdateRunnable)
-        widgetUpdateScheduled = false
-    }
-
-    private fun scheduleRadioHeaderChecks() {
-        val player = mediaLibrarySession.player
-        val currentItem = player.currentMediaItem ?: return
-        val mediaType = currentItem.mediaMetadata.extras?.getString("type")
-        if (mediaType != Constants.MEDIA_TYPE_RADIO) return
-        
-        if (radioHeaderCheckScheduled) return
-        
-        // Check immediately, then periodically
-        checkRadioHttpHeaders()
-        radioHeaderCheckFuture = radioHeaderCheckExecutor.scheduleWithFixedDelay(
-            radioHeaderCheckRunnable,
-            RADIO_HEADER_CHECK_INTERVAL_SECONDS,
-            RADIO_HEADER_CHECK_INTERVAL_SECONDS,
-            TimeUnit.SECONDS
-        )
-        radioHeaderCheckScheduled = true
-    }
-
-    private fun stopRadioHeaderChecks() {
-        if (!radioHeaderCheckScheduled) return
-        radioHeaderCheckFuture?.cancel(false)
-        radioHeaderCheckFuture = null
-        radioHeaderCheckScheduled = false
-    }
-
-    private fun checkRadioHttpHeaders() {
-        val player = mediaLibrarySession.player
-        val currentItem = player.currentMediaItem ?: return
-        val extras = currentItem.mediaMetadata.extras
-        val mediaType = extras?.getString("type")
-        if (mediaType != Constants.MEDIA_TYPE_RADIO) return
-        
-        // Skip if we already have embedded metadata (ICY/ID3) - HTTP headers are only fallback
-        val hasEmbeddedMetadata = !currentItem.mediaMetadata.artist.isNullOrBlank() ||
-                !currentItem.mediaMetadata.title.isNullOrBlank() ||
-                (!extras.getString("radioArtist").isNullOrBlank()) ||
-                (!extras.getString("radioTitle").isNullOrBlank())
-        if (hasEmbeddedMetadata) return
-        
-        val streamUrl = extras?.getString("uri") ?: currentItem.requestMetadata.mediaUri?.toString()
-        if (streamUrl.isNullOrBlank()) return
-
-        try {
-            val url = URL(streamUrl)
-            val connection = url.openConnection() as? HttpURLConnection ?: return
-            
-            // Only try HEAD request (lightweight) - skip GET fallback as it's unreliable
-            connection.requestMethod = "HEAD"
-            connection.setRequestProperty("Icy-MetaData", "1")
-            connection.setRequestProperty("User-Agent", "Tempus/1.0")
-            connection.connectTimeout = 3000 // Reduced timeout
-            connection.readTimeout = 3000
-            
-            connection.connect()
-            
-            if (connection.responseCode >= 400) {
-                connection.disconnect()
-                return
-            }
-            
-            // Check for metadata in HTTP headers
-            val streamTitle = connection.getHeaderField("icy-name")
-                ?: connection.getHeaderField("StreamTitle")
-                ?: connection.getHeaderField("stream-title")
-            
-            connection.disconnect()
-            
-            if (!streamTitle.isNullOrBlank()) {
-                processStreamTitle(streamTitle, player)
-            }
-        } catch (e: Exception) {
-            // Silently fail - this is a fallback mechanism, ICY metadata is primary
-        }
-    }
-    
-    private fun processStreamTitle(streamTitle: String, player: Player) {
-        // Parse "Artist - Title" format
-        val parts = streamTitle.split(" - ", limit = 2)
-        val artist = if (parts.size == 2) parts[0].trim().ifEmpty { null } else null
-        val title = if (parts.size == 2) parts[1].trim().ifEmpty { null } else streamTitle.trim().ifEmpty { null }
-        
-        if (artist.isNullOrBlank() && title.isNullOrBlank()) return
-        if (artist == lastRadioArtist && title == lastRadioTitle) return // Deduplicate
-        
-        lastRadioArtist = artist
-        lastRadioTitle = title
-        
-        // Update on main thread
-        widgetUpdateHandler.post {
-            val currentItemNow = player.currentMediaItem ?: return@post
-            val currentIndex = player.currentMediaItemIndex
-            if (currentIndex == C.INDEX_UNSET) return@post
-            
-            val currentExtras = currentItemNow.mediaMetadata.extras
-            if (currentExtras?.getString("type") != Constants.MEDIA_TYPE_RADIO) return@post
-            
-            // Double-check we still don't have embedded metadata (might have arrived since check)
-            val hasEmbeddedMetadata = !currentItemNow.mediaMetadata.artist.isNullOrBlank() ||
-                    !currentItemNow.mediaMetadata.title.isNullOrBlank() ||
-                    (!currentExtras.getString("radioArtist").isNullOrBlank()) ||
-                    (!currentExtras.getString("radioTitle").isNullOrBlank())
-            if (hasEmbeddedMetadata) return@post
-            
-            val metadataBuilder = currentItemNow.mediaMetadata.buildUpon()
-            val newExtras = Bundle(currentExtras ?: Bundle())
-            
-            // Store individual values in extras for UI
-            artist?.let { newExtras.putString("radioArtist", it) }
-            title?.let { newExtras.putString("radioTitle", it) }
-            
-            // Get station name (preserve if already set)
-            val stationName = currentExtras?.getString("stationName")
-                ?: currentItemNow.mediaMetadata.title?.toString()
-                ?: ""
-            if (stationName.isNotBlank()) {
-                newExtras.putString("stationName", stationName)
-            }
-            
-            // Format for notification/player: Title = "Artist - Song", Artist = "Station Name"
-            val formattedTitle = when {
-                !artist.isNullOrBlank() && !title.isNullOrBlank() -> "$artist - $title"
-                !title.isNullOrBlank() -> title
-                !artist.isNullOrBlank() -> artist
-                else -> stationName
-            }
-            
-            metadataBuilder.setTitle(formattedTitle)
-            if (stationName.isNotBlank()) {
-                metadataBuilder.setArtist(stationName)
-            }
-            metadataBuilder.setExtras(newExtras)
-            
-            (player as? ExoPlayer)?.let { exo ->
-                exo.replaceMediaItem(currentIndex, currentItemNow.buildUpon()
-                    .setMediaMetadata(metadataBuilder.build())
-                    .build())
-                updateWidget(exo)
-            }
-        }
-    }
-
-    private fun getRenderersFactory(): DefaultRenderersFactory {
-        val extensionRendererMode = if (DownloadUtil.useExtensionRenderers())
-            DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON
-        else
-            DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF
-
-        return object : DefaultRenderersFactory(this) {
-            init {
-                setExtensionRendererMode(extensionRendererMode)
-            }
-
-            override fun buildAudioSink(
-                context: Context,
-                enableFloatOutput: Boolean,
-                enableAudioTrackPlaybackParams: Boolean
-            ): AudioSink {
-                return DefaultAudioSink.Builder(context)
-                    .setAudioProcessors(arrayOf<AudioProcessor>(ReplayGainUtil.getAudioProcessor(), parametricEqProcessor))
-                    .setEnableFloatOutput(enableFloatOutput)
-                    .setEnableAudioOutputPlaybackParameters(enableAudioTrackPlaybackParams)
-                    .build()
-            }
-        }
+        getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(networkMonitor)
     }
 
     private fun getMediaSourceFactory(): MediaSource.Factory = DynamicMediaSourceFactory(this)
 
-    private inner class CustomNetworkCallback : ConnectivityManager.NetworkCallback() {
-        @Volatile
-        private var lastTransport = MusicUtil.getActiveTransport()
-
-        @Volatile
-        private var lastNetwork: Network? = null
-
-        private fun recheckAddress(network: Network, transport: Int, networkChanged: Boolean) {
-            val server = ServerPreferences.getServer()
-            val local = ServerPreferences.getLocalAddress()
-            if (server.isNullOrEmpty() || local.isNullOrEmpty() || server == local || ConnectionUtil.isPingDeferred()) return
-
-            val onLocal = ServerPreferences.isInUseServerAddressLocal()
-            App.getSubsonicClientInstance(local).systemClient.ping().enqueue(object : Callback<ApiResponse> {
-                override fun onResponse(call: Call<ApiResponse>, response: Response<ApiResponse>) {
-                    onPinged(response.isSuccessful && response.body() != null)
-                }
-
-                override fun onFailure(call: Call<ApiResponse>, t: Throwable) {
-                    onPinged(false)
-                }
-
-                private fun onPinged(answered: Boolean) {
-                    val needsSwitch = answered != onLocal
-                    if (needsSwitch || networkChanged) switchAddress(network, transport, onLocal, server, local, needsSwitch)
-                }
-            })
-        }
-
-        fun recheckAfterPlayerError() {
-            val network = lastNetwork ?: return
-            recheckAddress(network, lastTransport, false)
-        }
-
-        private fun switchAddress(network: Network, transport: Int, fromLocal: Boolean, server: String, local: String, needsSwitch: Boolean) {
-            widgetUpdateHandler.post {
-                if (serviceDestroyed || network != lastNetwork || transport != lastTransport ||
-                    !CacheUtil.isConnected() || ConnectionUtil.isPingDeferred() ||
-                    ServerPreferences.getServer() != server || ServerPreferences.getLocalAddress() != local) return@post
-
-                if (needsSwitch && ServerPreferences.isInUseServerAddressLocal() == fromLocal) {
-                    if (fromLocal) {
-                        Log.d(TAG, "Local server address unreachable, switching")
-                        ServerPreferences.setServerSwitchableTimer()
-                        ConnectionUtil.useServerAddress(server)
-                    } else {
-                        Log.d(TAG, "Local server address answered, switching")
-                        ConnectionUtil.useServerAddress(local)
-                    }
-                }
-                restartIfFailed()
-            }
-        }
-
-        private fun restartIfFailed() {
-            lastPlayerErrorRecoveryMs = 0L
-
-            val player = mediaLibrarySession.player
-            if (player === exoplayer && player.playbackState == Player.STATE_IDLE && player.playerError != null && !stoppedSinceError) {
-                if (SystemClock.elapsedRealtime() < restartableUntilMs) player.prepare()
-                else Log.d(TAG, "Player error is too old to restart")
-            }
-        }
-
-        override fun onCapabilitiesChanged(
-            network: Network,
-            networkCapabilities: NetworkCapabilities
-        ) {
-            val transport = MusicUtil.transportOf(networkCapabilities)
-            val transportChanged = transport != lastTransport
-            if (network == lastNetwork && !transportChanged) return
-            lastNetwork = network
-            lastTransport = transport
-
-            recheckAddress(network, transport, true)
-            if (!transportChanged) return
-
-            val resolvable = transport == NetworkCapabilities.TRANSPORT_WIFI ||
-                    transport == NetworkCapabilities.TRANSPORT_CELLULAR
-            if (resolvable) MusicUtil.primeActiveTransport(transport)
-
-            widgetUpdateHandler.post {
-                if (serviceDestroyed) return@post
-                if (resolvable) updateMediaItems(mediaLibrarySession.player)
-                QueuePreloader.preload(this@BaseMediaService, mediaLibrarySession.player)
-            }
-        }
-    }
-
     inner class LocalBinder : Binder() {
         fun getEqualizerManager(): EqualizerManager {
-            return equalizerManager
+            return audio.equalizerManager
         }
 
         fun getPlayer(): ExoPlayer {
@@ -1317,11 +524,3 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
         }
     }
 }
-private const val QUEUE_SYNC_DEBOUNCE_MS = 2000L
-// Delay after the last skip/seek/play before saving; each new trigger restarts it,
-// so skipping several songs in quick succession causes only one save.
-private const val WIDGET_UPDATE_INTERVAL_MS = 1000L
-// How often to re-persist the resume point (and server bookmark) during playback, so a
-// force-close or stop mid-playback still lands within a few seconds of where you were.
-private const val RESUME_SAVE_INTERVAL_MS = 15000L
-private const val RADIO_HEADER_CHECK_INTERVAL_SECONDS = 30L // Reduced frequency - only fallback when ICY fails
