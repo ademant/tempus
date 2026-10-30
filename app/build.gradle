@@ -79,6 +79,38 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             debuggable = true
+            enableUnitTestCoverage = true
+        }
+    }
+
+    testCoverage {
+        jacocoVersion = "0.8.12"
+    }
+
+    // Line coverage floor for the logic packages. Android UI is excluded on purpose: it is
+    // covered by manual device testing, not by unit tests.
+    // Raise the floor when coverage goes up; do not lower it to make a change pass.
+    def coverageFloorPercent = 7
+    def coverageFloorPackages = ['util', 'provider', 'upnp', 'lan', 'repository', 'subsonic']
+    tasks.register('verifyTempusDebugCoverageFloor') {
+        dependsOn 'createTempusDebugUnitTestCoverageReport'
+        doLast {
+            def report = layout.buildDirectory.file('reports/coverage/test/tempus/debug/report.xml').get().asFile
+            // JaCoCo writes a DOCTYPE, which the strict parser refuses. The DTD is not needed here.
+            def xml = new groovy.xml.XmlSlurper().parseText(report.text.replaceFirst(/(?s)<!DOCTYPE[^>]*>/, ''))
+            long missed = 0
+            long covered = 0
+            xml.package.findAll { coverageFloorPackages.contains(it.@name.toString().tokenize('/').last()) }.each { pkg ->
+                pkg.class.counter.findAll { it.@type == 'LINE' }.each {
+                    missed += it.@missed.toLong()
+                    covered += it.@covered.toLong()
+                }
+            }
+            double percent = 100.0 * covered / (missed + covered)
+            println String.format('Logic-package line coverage: %.2f%% (floor %d%%)', percent, coverageFloorPercent)
+            if (percent < coverageFloorPercent) {
+                throw new GradleException(String.format('Line coverage %.2f%% is below the floor of %d%%', percent, coverageFloorPercent))
+            }
         }
     }
 
