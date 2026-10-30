@@ -20,6 +20,7 @@ import com.eddyizm.tempus.subsonic.models.Playlist;
 import com.eddyizm.tempus.subsonic.models.PlaylistWithSongs;
 import com.eddyizm.tempus.subsonic.models.SearchResult2;
 import com.eddyizm.tempus.subsonic.models.SearchResult3;
+import com.eddyizm.tempus.util.IoDispatch;
 import com.eddyizm.tempus.util.LibraryPreferences;
 import com.eddyizm.tempus.ui.fragment.SearchFragment;
 
@@ -27,7 +28,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.concurrent.Executors;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -63,7 +63,7 @@ public class SearchingRepository {
     public MutableLiveData<SearchResult3> search3(SearchFragment sf, String query) {
         MutableLiveData<SearchResult3> result = new MutableLiveData<>();
 
-        Executors.newSingleThreadExecutor().execute(() -> {
+        IoDispatch.launch(() -> {
             List<Child> allSongs = new ArrayList<>();
             int offset = 0;
             int limit = 1000;
@@ -182,84 +182,16 @@ public class SearchingRepository {
     }
 
     public void insert(RecentSearch recentSearch) {
-        InsertThreadSafe insert = new InsertThreadSafe(recentSearchDao, recentSearch);
-        Thread thread = new Thread(insert);
-        thread.start();
+        IoDispatch.launch(() -> recentSearchDao.insert(recentSearch));
     }
 
     public void delete(RecentSearch recentSearch) {
-        DeleteThreadSafe delete = new DeleteThreadSafe(recentSearchDao, recentSearch);
-        Thread thread = new Thread(delete);
-        thread.start();
+        IoDispatch.launch(() -> recentSearchDao.delete(recentSearch));
     }
 
     public List<String> getRecentSearchSuggestion() {
-        List<String> recent = new ArrayList<>();
-
-        RecentThreadSafe suggestionsThread = new RecentThreadSafe(recentSearchDao);
-        Thread thread = new Thread(suggestionsThread);
-        thread.start();
-
-        try {
-            thread.join();
-            recent = suggestionsThread.getRecent();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        return recent;
-    }
-
-    private static class DeleteThreadSafe implements Runnable {
-        private final RecentSearchDao recentSearchDao;
-        private final RecentSearch recentSearch;
-
-        public DeleteThreadSafe(RecentSearchDao recentSearchDao, RecentSearch recentSearch) {
-            this.recentSearchDao = recentSearchDao;
-            this.recentSearch = recentSearch;
-        }
-
-        @Override
-        public void run() {
-            recentSearchDao.delete(recentSearch);
-        }
-    }
-
-    private static class InsertThreadSafe implements Runnable {
-        private final RecentSearchDao recentSearchDao;
-        private final RecentSearch recentSearch;
-
-        public InsertThreadSafe(RecentSearchDao recentSearchDao, RecentSearch recentSearch) {
-            this.recentSearchDao = recentSearchDao;
-            this.recentSearch = recentSearch;
-        }
-
-        @Override
-        public void run() {
-            recentSearchDao.insert(recentSearch);
-        }
-    }
-
-    private static class RecentThreadSafe implements Runnable {
-        private final RecentSearchDao recentSearchDao;
-        private List<String> recent = new ArrayList<>();
-
-        public RecentThreadSafe(RecentSearchDao recentSearchDao) {
-            this.recentSearchDao = recentSearchDao;
-        }
-
-        @Override
-        public void run() {
-            if(LibraryPreferences.isSearchSortingChronologicallyEnabled()){
-                recent = recentSearchDao.getRecent();
-            }
-            else {
-                recent = recentSearchDao.getAlpha();
-            }
-        }
-
-        public List<String> getRecent() {
-            return recent;
-        }
+        return IoDispatch.blockingIo(() -> LibraryPreferences.isSearchSortingChronologicallyEnabled()
+                ? recentSearchDao.getRecent()
+                : recentSearchDao.getAlpha());
     }
 }
