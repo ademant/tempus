@@ -1,5 +1,6 @@
 package com.eddyizm.tempus.subsonic
 
+import com.eddyizm.tempus.util.CleartextGuard
 import com.eddyizm.tempus.App
 import com.eddyizm.tempus.BuildConfig
 import com.eddyizm.tempus.subsonic.models.Bookmarks
@@ -78,6 +79,7 @@ class RetrofitClient(subsonic: Subsonic) {
         // AlbumSongListClient 60
 
         return OkHttpClient.Builder()
+            .addInterceptor(CleartextGuard())
             .callTimeout(2, TimeUnit.MINUTES)
             .connectTimeout(20, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)

@@ -139,6 +139,16 @@
                 android:checked="false"
                 android:text="@string/la_server_field_plaintext_password_checkbox"/>
 
+            <!-- Unencrypted connection switch. Shown only for a public http:// address. -->
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/serverUnencryptedSwitch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:checked="false"
+                android:visibility="gone"
+                android:text="@string/la_server_field_unencrypted_checkbox"/>
+
             <!-- Server local url switch -->
             <com.google.android.material.materialswitch.MaterialSwitch
                 android:id="@+id/server_local_url_switch"

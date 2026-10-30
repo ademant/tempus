@@ -870,6 +870,8 @@
     <string name="la_server_field_server_local_url">Local URL</string>
     <string name="la_server_field_server_cert">Client certificate (optional)</string>
     <string name="la_server_field_plaintext_password_checkbox">Plaintext password</string>
+    <string name="la_server_field_unencrypted_checkbox">Allow unencrypted connection to this public server</string>
+    <string name="la_server_field_unencrypted_error">Use https://, or turn on unencrypted connection for this public server</string>
     <string name="la_server_button_create">Create</string>
     <string name="la_server_button_update">Update</string>
     <string name="la_server_button_delete">Delete</string>

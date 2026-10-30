@@ -150,6 +150,7 @@ public class LoginFragment extends Fragment implements ClickCallback {
     @Override
     public void onServerClick(Bundle bundle) {
         Server server = bundle.getParcelable("server_object");
+        Preferences.setAllowUnencryptedServer(server.getAllowUnencrypted());
         saveServerPreference(server.getServerId(), server.getAddress(), server.getLocalAddress(), server.getUsername(), server.getPassword(), server.isLowSecurity(), server.getClientCert(), server.getCustomHeaders());
 
         SystemRepository systemRepository = new SystemRepository();
