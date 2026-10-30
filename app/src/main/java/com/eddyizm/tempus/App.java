@@ -33,9 +33,6 @@ public class App extends Application {
     public void onCreate() {
         super.onCreate();
 
-        // Seal server passwords that were stored in plaintext before SecretBox existed.
-        new com.eddyizm.tempus.repository.ServerRepository().sealLegacyPasswords();
-
         // Capture crash logs
         CaocConfig.Builder.create()
                 .backgroundMode(CaocConfig.BACKGROUND_MODE_SHOW_CUSTOM) //default: CaocConfig.BACKGROUND_MODE_SHOW_CUSTOM
@@ -61,6 +58,10 @@ public class App extends Application {
         preferences = PreferenceManager.getDefaultSharedPreferences(context);
 
         ClientCertManager.setupSslSocketFactory(context);
+
+        // Seal server passwords that were stored in plaintext before SecretBox existed.
+        // Runs after the context is set: the database needs App.getContext().
+        new com.eddyizm.tempus.repository.ServerRepository().sealLegacyPasswords();
     }
 
     public static App getInstance() {
