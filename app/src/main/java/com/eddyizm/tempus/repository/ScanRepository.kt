@@ -14,7 +14,7 @@ class ScanRepository {
     suspend fun startScan(): Status? = call { startScan() }
 
     /** Returns null when the server sent no usable status. Throws on failure. */
-    suspend fun getScanStatus(): Status? = call { startScan() }
+    suspend fun getScanStatus(): Status? = call { getScanStatus() }
 
     private suspend fun call(request: MediaLibraryScanningClient.() -> Call<ApiResponse>): Status? {
         val client = App.getSubsonicClientInstance(false).mediaLibraryScanningClient
