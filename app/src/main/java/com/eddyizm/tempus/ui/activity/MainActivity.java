@@ -82,6 +82,7 @@ import com.google.common.util.concurrent.MoreExecutors;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
+import com.eddyizm.tempus.util.IoDispatch;
 
 @UnstableApi
 public class MainActivity extends BaseActivity {
@@ -886,7 +887,7 @@ public class MainActivity extends BaseActivity {
             goToHome();
         }
 
-        new Thread(() -> {
+        IoDispatch.launch(() -> {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
                 ShortcutManager shortcutManager = getSystemService(ShortcutManager.class);
 
@@ -904,6 +905,6 @@ public class MainActivity extends BaseActivity {
                     shortcutManager.setDynamicShortcuts(Collections.singletonList(shortcut));
                 }
             }
-        }).start();
+        });
     }
 }

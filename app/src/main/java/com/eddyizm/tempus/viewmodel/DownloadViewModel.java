@@ -21,6 +21,7 @@ import com.eddyizm.tempus.util.DownloadPreferences;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import com.eddyizm.tempus.util.IoDispatch;
 
 public class DownloadViewModel extends AndroidViewModel {
     private static final String TAG = "DownloadViewModel";
@@ -71,7 +72,7 @@ public class DownloadViewModel extends AndroidViewModel {
     }
 
     public void refreshExternalDownloads() {
-        new Thread(() -> {
+        IoDispatch.launch(() -> {
             String directoryUri = DownloadPreferences.getDownloadDirectoryUri();
             if (directoryUri == null) {
                 refreshResult.postValue(-1);
@@ -122,6 +123,6 @@ public class DownloadViewModel extends AndroidViewModel {
             } else {
                 refreshResult.postValue(0);
             }
-        }).start();
+        });
     }
 }

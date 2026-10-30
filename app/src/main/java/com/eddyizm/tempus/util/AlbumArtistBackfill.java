@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import retrofit2.Response;
 import com.eddyizm.tempus.util.LibraryPreferences;
 import com.eddyizm.tempus.util.ServerPreferences;
+import com.eddyizm.tempus.util.IoDispatch;
 
 /**
  * Fills in the album artist for downloads that were stored before the app kept one. An album id is
@@ -51,7 +52,7 @@ public class AlbumArtistBackfill {
     public static void backfillIfNeeded() {
         if (!RUNNING.compareAndSet(false, true)) return;
 
-        new Thread(() -> {
+        IoDispatch.launch(() -> {
             try {
                 backfill();
             } catch (Exception exception) {
@@ -60,7 +61,7 @@ public class AlbumArtistBackfill {
             } finally {
                 RUNNING.set(false);
             }
-        }, "AlbumArtistBackfill").start();
+        });
     }
 
     private static void backfill() {

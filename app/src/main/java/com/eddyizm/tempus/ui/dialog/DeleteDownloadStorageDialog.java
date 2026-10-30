@@ -26,6 +26,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import com.eddyizm.tempus.util.IoDispatch;
 
 @OptIn(markerClass = UnstableApi.class)
 public class DeleteDownloadStorageDialog extends DialogFragment {
@@ -56,7 +57,7 @@ public class DeleteDownloadStorageDialog extends DialogFragment {
             Button positiveButton = dialog.getButton(Dialog.BUTTON_POSITIVE);
             positiveButton.setOnClickListener(v -> {
                 Context context = requireContext();
-                new Thread(() -> {
+                IoDispatch.launch(() -> {
                     if (DownloadPreferences.getDownloadDirectoryUri() == null) {
                         DownloadUtil.getDownloadTracker(context).removeAll();
                     }
@@ -84,7 +85,7 @@ public class DeleteDownloadStorageDialog extends DialogFragment {
                         ExternalAudioReader.refreshCache();
                         ExternalDownloadMetadataStore.clear();
                     }
-                }).start();
+                });
                 dialog.dismiss();
             });
 
