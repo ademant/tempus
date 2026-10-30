@@ -14,14 +14,12 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import com.eddyizm.tempus.util.UiPreferences;
 
 public class RadioCoverArtDownloader {
     private static final String TAG = "RadioCoverArtDownloader";
     private static final String COVER_DIR = "radio_covers";
-    private static final ExecutorService executor = Executors.newFixedThreadPool(2);
+    private static final IoLane coverLane = new IoLane(2);
 
     public static File getCoverDir() {
         Context context = App.getContext();
@@ -48,7 +46,7 @@ public class RadioCoverArtDownloader {
     public static void downloadCoverArt(String stationId, String coverArtUrl) {
         if (coverArtUrl == null || coverArtUrl.isEmpty()) return;
 
-        executor.execute(() -> {
+        coverLane.launch(() -> {
             try {
                 File targetFile = getLocalCoverFile(stationId);
                 String urlString = resolveCoverArtUrl(coverArtUrl);
@@ -137,7 +135,7 @@ public class RadioCoverArtDownloader {
     }
 
     public static void deleteCoverArt(String stationId) {
-        executor.execute(() -> {
+        coverLane.launch(() -> {
             File file = getLocalCoverFile(stationId);
             if (file.exists()) {
                 file.delete();
