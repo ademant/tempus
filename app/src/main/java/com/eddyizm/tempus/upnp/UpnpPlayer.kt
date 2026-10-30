@@ -7,17 +7,12 @@ import android.os.Looper
 import android.os.PowerManager
 import android.os.SystemClock
 import android.util.Log
-import androidx.core.net.toUri
 import androidx.media3.common.C
 import androidx.media3.common.DeviceInfo
-import androidx.media3.common.Format
 import androidx.media3.common.MediaItem
-import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.SimpleBasePlayer
-import androidx.media3.common.TrackGroup
-import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import com.eddyizm.tempus.service.MediaManager
 import com.eddyizm.tempus.util.Constants
@@ -30,6 +25,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
+
 
 /** media3 [Player] backed by a UPnP renderer, driven by a poll because remote state is not observable. */
 @UnstableApi
@@ -51,7 +47,7 @@ class UpnpPlayer(
             ?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKE_LOCK_TAG)
             ?.apply { setReferenceCounted(false) }
 
-    @Volatile private var playlist: List<Entry> = emptyList()
+    @Volatile private var playlist: List<UpnpQueueEntry> = emptyList()
     @Volatile private var index = 0
     @Volatile private var playWhenReady = false
     @Volatile private var playbackState = Player.STATE_IDLE
@@ -137,36 +133,17 @@ class UpnpPlayer(
             updateWakeLock()
         }
 
-    // Its own thread, so a key press never waits behind a Play the renderer is holding.
-    private val volumeWorker = Executors.newSingleThreadExecutor()
-    private var events: UpnpEvents? = null
-    @Volatile private var subscriptionId: String? = null
-    @Volatile private var maxVolume = DEFAULT_MAX_VOLUME
-
-    // Null until the renderer's events settle on a level. Some renderers' GetVolume does not report their real one.
-    @Volatile private var deviceVolume: Int? = null
-    private var heardVolume = 0
-    @Volatile private var volumeRequests = 0L
-
-    private val settleVolume = Runnable {
-        if (released) return@Runnable
-        deviceVolume = heardVolume
-        invalidateLater()
-    }
+    // Volume and the renderer event subscription, on their own thread so a key press never
+    // waits behind a Play the renderer is holding.
+    private val volumeControl = UpnpVolumeControl(controlPoint, device, handler, { released }, ::invalidateLater)
 
     init {
-        device.eventUrls[UpnpDevice.RENDERING_CONTROL]?.let { url ->
-            volumeWorker.execute { if (!subscribe(url)) renewAfter(RESUBSCRIBE_MS, url) }
-        }
-    }
-
-    private class Entry(val uid: Long, val item: MediaItem, val url: String?) {
-        val tracks: Tracks = audioTracks(uid, mimeTypeFor(item, url))
+        volumeControl.start()
     }
 
     private var nextUid = 0L
 
-    private fun entry(item: MediaItem) = Entry(nextUid++, item, streamUrl(item))
+    private fun entry(item: MediaItem) = UpnpQueueEntry(nextUid++, item, streamUrl(item))
 
     private val poll = object : Runnable {
         override fun run() {
@@ -197,7 +174,7 @@ class UpnpPlayer(
             PositionSupplier.getConstant(positionMs)
         }
 
-        val volume = deviceVolume
+        val volume = volumeControl.deviceVolume
         val state = State.Builder()
             .setAvailableCommands(if (volume != null) COMMANDS_WITH_VOLUME else COMMANDS)
             .setPlayerError(error)
@@ -215,7 +192,7 @@ class UpnpPlayer(
             .setContentPositionMs(position)
 
         if (volume != null) {
-            state.setDeviceInfo(DeviceInfo.Builder(DeviceInfo.PLAYBACK_TYPE_REMOTE).setMaxVolume(maxVolume).build())
+            state.setDeviceInfo(DeviceInfo.Builder(DeviceInfo.PLAYBACK_TYPE_REMOTE).setMaxVolume(volumeControl.maxVolume).build())
                 .setDeviceVolume(volume)
         }
 
@@ -271,11 +248,11 @@ class UpnpPlayer(
         queue.subList(fromIndex, toIndex).clear()
         queue.addAll(
             fromIndex,
-            mediaItems.mapIndexed { i, item -> Entry(replaced.getOrNull(i)?.uid ?: nextUid++, item, streamUrl(item)) }
+            mediaItems.mapIndexed { i, item -> UpnpQueueEntry(replaced.getOrNull(i)?.uid ?: nextUid++, item, streamUrl(item)) }
         )
     }
 
-    private fun editQueue(edit: (MutableList<Entry>) -> Unit): ListenableFuture<*> {
+    private fun editQueue(edit: (MutableList<UpnpQueueEntry>) -> Unit): ListenableFuture<*> {
         val playingUid = currentEntry()?.uid
         val nextUrlBefore = urlOf(playlist.getOrNull(index + 1))
 
@@ -307,7 +284,7 @@ class UpnpPlayer(
         }
     }
 
-    private fun urlOf(entry: Entry?): String? = entry?.url
+    private fun urlOf(entry: UpnpQueueEntry?): String? = entry?.url
 
     override fun handlePrepare(): ListenableFuture<*> = when {
         error != null -> loadLater(seekToMs = positionMs)
@@ -362,7 +339,7 @@ class UpnpPlayer(
                 }
             } catch (e: Exception) {
                 if (playWhenReady) {
-                    fail(classify(currentEntry(), e))
+                    fail(classifyPlaybackError(device, currentEntry(), e))
                 } else {
                     Log.w(TAG, "renderer did not acknowledge the pause", e)
                     this.playWhenReady = false
@@ -430,99 +407,19 @@ class UpnpPlayer(
         invalidateLater()
     }
 
-    override fun handleSetDeviceVolume(deviceVolume: Int, flags: Int): ListenableFuture<*> = setVolume { deviceVolume }
+    override fun handleSetDeviceVolume(deviceVolume: Int, flags: Int): ListenableFuture<*> =
+        volumeControl.change { deviceVolume }
 
-    override fun handleIncreaseDeviceVolume(flags: Int): ListenableFuture<*> = setVolume { it + 1 }
+    override fun handleIncreaseDeviceVolume(flags: Int): ListenableFuture<*> = volumeControl.change { it + 1 }
 
-    override fun handleDecreaseDeviceVolume(flags: Int): ListenableFuture<*> = setVolume { it - 1 }
-
-    // A key held down queues a send per step, and only the newest of those sends.
-    private fun setVolume(change: (Int) -> Int): ListenableFuture<*> {
-        val current = deviceVolume ?: return Futures.immediateVoidFuture()
-        val target = change(current).coerceIn(0, maxVolume)
-        deviceVolume = target
-        handler.removeCallbacks(settleVolume)
-        val request = ++volumeRequests
-        volumeWorker.execute {
-            if (request != volumeRequests || released) return@execute
-            try {
-                controlPoint.setVolume(device, target)
-            } catch (e: Exception) {
-                Log.w(TAG, "renderer did not take volume $target", e)
-                handler.post { if (request == volumeRequests) heard(heardVolume) }
-            }
-        }
-        return Futures.immediateVoidFuture()
-    }
-
-    // Some renderers' first event can repeat the last level they were sent, with the real one a moment later.
-    private fun heard(volume: Int) {
-        if (released) return
-        heardVolume = volume.coerceIn(0, maxVolume)
-        handler.removeCallbacks(settleVolume)
-        handler.postDelayed(settleVolume, VOLUME_SETTLE_MS)
-    }
-
-    private fun subscribe(eventUrl: String): Boolean {
-        if (released) return false
-        return try {
-            controlPoint.volumeMax(device)?.let { maxVolume = it }
-                ?: Log.d(TAG, "renderer gave no volume range, keeping $maxVolume")
-            val listener = events
-                ?: UpnpEvents.open(eventUrl) { handler.post { heard(it) } }.also { events = it }
-            val (id, seconds) = controlPoint.subscribe(eventUrl, listener.callbackUrl)
-            subscriptionId = id
-            renewAfter(TimeUnit.SECONDS.toMillis(seconds) / 2, eventUrl)
-            true
-        } catch (e: Exception) {
-            Log.w(TAG, "renderer sends no volume events", e)
-            false
-        }
-    }
-
-    private fun renew(eventUrl: String) {
-        if (released) return
-        subscriptionId?.let { id ->
-            try {
-                val (_, seconds) = controlPoint.renew(eventUrl, id)
-                renewAfter(TimeUnit.SECONDS.toMillis(seconds) / 2, eventUrl)
-                return
-            } catch (e: Exception) {
-                Log.d(TAG, "renewal refused, subscribing again", e)
-                subscriptionId = null
-            }
-        }
-        if (!subscribe(eventUrl)) renewAfter(RESUBSCRIBE_MS, eventUrl)
-    }
-
-    private fun renewAfter(delayMs: Long, eventUrl: String) {
-        handler.post {
-            if (released) return@post
-            handler.postDelayed(
-                { if (!released) volumeWorker.execute { renew(eventUrl) } },
-                delayMs.coerceAtLeast(MIN_RENEW_MS)
-            )
-        }
-    }
+    override fun handleDecreaseDeviceVolume(flags: Int): ListenableFuture<*> = volumeControl.change { it - 1 }
 
     override fun handleRelease(): ListenableFuture<*> {
         released = true
         stopPolling()
         updateWakeLock()
         handler.removeCallbacksAndMessages(null)
-        volumeWorker.execute {
-            val url = device.eventUrls[UpnpDevice.RENDERING_CONTROL]
-            val id = subscriptionId
-            if (url != null && id != null) {
-                try {
-                    controlPoint.unsubscribe(url, id)
-                } catch (e: Exception) {
-                    Log.d(TAG, "renderer did not acknowledge the unsubscribe", e)
-                }
-            }
-            events?.close()
-        }
-        volumeWorker.shutdown()
+        volumeControl.close()
         return worker.submit<Unit> {
             stopRenderer("on release")
             worker.shutdown()
@@ -583,14 +480,14 @@ class UpnpPlayer(
             if (restart) {
                 seekWhenPlaying(seekToMs)
             } else {
-                controlPoint.setAvTransportUri(device, url, metadataFor(entry.item, url))
+                controlPoint.setAvTransportUri(device, url, playbackMetadata(entry.item, url))
                 rendererUrl = url
                 handedOverUrl = url
                 handedOverAt = SystemClock.elapsedRealtime()
             }
             if (playWhenReady) controlPoint.play(device)
         } catch (e: Exception) {
-            fail(classify(entry, e))
+            fail(classifyPlaybackError(device, entry, e))
             return
         }
 
@@ -605,31 +502,6 @@ class UpnpPlayer(
         handler.post { if (playWhenReady) startPolling() }
         invalidateLater()
     }
-
-    private fun classify(entry: Entry?, cause: Exception): PlaybackException =
-        if (cause is UpnpException) {
-            if (cause.isResourceMissing && entry != null) cannotUseTheStream(entry, cause)
-            else refused(cause)
-        } else {
-            cannotReachRenderer(cause)
-        }
-
-    private fun cannotUseTheStream(entry: Entry, cause: Exception?): PlaybackException {
-        val host = entry.url?.toUri()?.host ?: "the music server"
-        return PlaybackException(
-            "${device.friendlyName} could not play the track from $host. A renderer fetches the " +
-                "stream from the music server itself, so the server address has to be one the " +
-                "renderer can reach, not a VPN or loopback address only this phone can use.",
-            cause,
-            PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND
-        )
-    }
-
-    private fun refused(cause: UpnpException) = PlaybackException(
-        "${device.friendlyName} refused the track (UPnP error ${cause.code}).",
-        cause,
-        PlaybackException.ERROR_CODE_REMOTE_ERROR
-    )
 
     // Whether the target may be held as the position. A kept seek may, a refused one may not.
     private fun seekWhenPlaying(positionMs: Long, afterPlay: Boolean = false): Boolean =
@@ -669,13 +541,6 @@ class UpnpPlayer(
         return generation == loadGeneration && !released && seekOrKeepPlaying(positionMs)
     }
 
-    // Remote error, not network failure, or the service reloads every five seconds forever.
-    private fun cannotReachRenderer(cause: Exception) = PlaybackException(
-        "Lost contact with ${device.friendlyName}.",
-        cause,
-        PlaybackException.ERROR_CODE_REMOTE_ERROR
-    )
-
     // The renderer is stopped too, because an LG C1 left holding a URL it refused keeps refusing.
     private fun fail(reason: PlaybackException) {
         error = reason
@@ -693,7 +558,7 @@ class UpnpPlayer(
         val next = playlist.getOrNull(index + 1) ?: return
         val nextUrl = urlOf(next) ?: return
         try {
-            controlPoint.setNextAvTransportUri(device, nextUrl, metadataFor(next.item, nextUrl))
+            controlPoint.setNextAvTransportUri(device, nextUrl, playbackMetadata(next.item, nextUrl))
             nextTrackSentFor = nextUrl
         } catch (e: Exception) {
             nextTrackSentFor = null
@@ -710,7 +575,7 @@ class UpnpPlayer(
      * A live stream, which has no length. Kodi reports the length of the track before it for about
      * a second after the switch, so a station takes none from the renderer.
      */
-    private fun isStation(entry: Entry?): Boolean {
+    private fun isStation(entry: UpnpQueueEntry?): Boolean {
         val item = entry?.item ?: return false
         return item.mediaMetadata.extras?.getString("type") == Constants.MEDIA_TYPE_RADIO ||
             item.mediaId.startsWith("ir-")
@@ -804,7 +669,7 @@ class UpnpPlayer(
         } catch (e: UpnpException) {
             failingSince = 0L
             if (e.isResourceMissing && playWhenReady) {
-                currentEntry()?.let { fail(cannotUseTheStream(it, e)) } ?: run {
+                currentEntry()?.let { fail(cannotUseTheStream(device, it, e)) } ?: run {
                     Log.w(TAG, "could not read the renderer's state", e)
                 }
             } else {
@@ -815,7 +680,7 @@ class UpnpPlayer(
             when {
                 SystemClock.uptimeMillis() - failingSince <= GIVE_UP_AFTER_MS ->
                     Log.w(TAG, "could not read the renderer's state", e)
-                playWhenReady -> fail(cannotReachRenderer(e))
+                playWhenReady -> fail(cannotReachRenderer(device, e))
                 else -> {
                     Log.w(TAG, "renderer is unreachable while paused, no longer reading it", e)
                     rendererUrl = null
@@ -891,7 +756,7 @@ class UpnpPlayer(
         if (entry != null && !rendererStarted) {
             // Stopped before it starts, so the URL is still open.
             pollsBeforeStart += 1
-            if (pollsBeforeStart > MAX_POLLS_BEFORE_START) fail(cannotUseTheStream(entry, null))
+            if (pollsBeforeStart > MAX_POLLS_BEFORE_START) fail(cannotUseTheStream(device, entry, null))
             return
         }
         rendererUrl = null
@@ -959,19 +824,7 @@ class UpnpPlayer(
         sendNextTrack()
     }
 
-    private fun currentEntry(): Entry? = playlist.getOrNull(index)
-
-    private fun metadataFor(item: MediaItem, url: String): String {
-        val metadata = item.mediaMetadata
-        // Tempus tags every item "audio", so protocolInfo keeps a wildcard media type. C1 plays FLAC.
-        return UpnpControlPoint.didl(
-            url,
-            metadata.title?.toString().orEmpty(),
-            metadata.artist?.toString().orEmpty(),
-            metadata.albumTitle?.toString().orEmpty(),
-            "*"
-        )
-    }
+    private fun currentEntry(): UpnpQueueEntry? = playlist.getOrNull(index)
 
     private fun startPolling() {
         if (released) return
@@ -1068,42 +921,8 @@ class UpnpPlayer(
 
         private const val SEEK_WAIT_POLL_MS = 200L
 
-        private const val DEFAULT_MAX_VOLUME = 100
-
-        private const val VOLUME_SETTLE_MS = 1000L
-
-        private val MIN_RENEW_MS = TimeUnit.SECONDS.toMillis(10)
-
-        private val RESUBSCRIBE_MS = TimeUnit.SECONDS.toMillis(30)
-
-        // The format the app asked the server for, else the format of the file on the server.
-        private fun mimeTypeFor(item: MediaItem, url: String?): String {
-            val extras = item.mediaMetadata.extras
-            val asked = when (extras?.getString("type")) {
-                Constants.MEDIA_TYPE_MUSIC, Constants.MEDIA_TYPE_PODCAST ->
-                    url?.toUri()?.getQueryParameter("format")
-                else -> null
-            }
-            val format = asked?.takeIf { it.isNotEmpty() && it != "raw" }
-                ?: MusicUtil.sourceSuffix(extras)?.takeIf { it.isNotEmpty() }
-                ?: return MimeTypes.AUDIO_UNKNOWN
-            // Format.Builder normalizes it, so mp3 lands as audio/mpeg.
-            return "audio/$format"
-        }
-
         /** On every format this player publishes, so the player screen knows a renderer plays. */
         const val FORMAT_ID = "upnp"
-
-        // Without tracks onTracksChanged never fires, and scrobbling and continuous play hang off it.
-        private fun audioTracks(uid: Long, mimeType: String): Tracks {
-            val format = Format.Builder().setId(FORMAT_ID).setSampleMimeType(mimeType).build()
-            val group = TrackGroup(uid.toString(), format)
-            return Tracks(
-                listOf(
-                    Tracks.Group(group, false, intArrayOf(C.FORMAT_HANDLED), booleanArrayOf(true))
-                )
-            )
-        }
 
         private val COMMANDS = Player.Commands.Builder().addAll(
             Player.COMMAND_PLAY_PAUSE,
