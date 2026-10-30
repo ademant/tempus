@@ -62,6 +62,7 @@ import java.util.stream.Collectors;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+import com.eddyizm.tempus.util.IoDispatch;
 
 @UnstableApi
 public class AutomotiveRepository {
@@ -388,7 +389,7 @@ public class AutomotiveRepository {
     public ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> getDownloadedSongs() {
         final SettableFuture<LibraryResult<ImmutableList<MediaItem>>> listenableFuture = SettableFuture.create();
 
-        new Thread(() -> {
+        IoDispatch.launch(() -> {
             // Any throw here must resolve the future, otherwise the Android Auto
             // browse request hangs forever with no error feedback.
             try {
@@ -416,7 +417,7 @@ public class AutomotiveRepository {
             } catch (Exception e) {
                 listenableFuture.setException(e);
             }
-        }).start();
+        });
 
         return listenableFuture;
     }
@@ -844,7 +845,7 @@ public class AutomotiveRepository {
                             serverStations.addAll(response.body().getSubsonicResponse().getInternetRadioStations().getInternetRadioStations());
                         }
 
-                        new Thread(() -> {
+                        IoDispatch.launch(() -> {
                             List<InternetRadioStation> localStations = new ArrayList<>();
                             for (InternetRadioStationCache cache : AppDatabase.getInstance().internetRadioStationDao().getLocal()) {
                                 localStations.add(cache.toInternetRadioStation());
@@ -860,7 +861,7 @@ public class AutomotiveRepository {
                             setInternetRadioStationsMetadata(radioStations);
 
                             listenableFuture.set(LibraryResult.ofItemList(ImmutableList.copyOf(mediaItems), null));
-                        }).start();
+                        });
                     }
 
                     @Override
@@ -1358,9 +1359,7 @@ public class AutomotiveRepository {
             sessionMediaItems.add(sessionMediaItem);
         }
 
-        InsertAllThreadSafe insertAll = new InsertAllThreadSafe(sessionMediaItemDao, sessionMediaItems);
-        Thread thread = new Thread(insertAll);
-        thread.start();
+        IoDispatch.launch(() -> sessionMediaItemDao.insertAll(sessionMediaItems));
     }
 
     @OptIn(markerClass = UnstableApi.class)
@@ -1374,9 +1373,7 @@ public class AutomotiveRepository {
             sessionMediaItems.add(sessionMediaItem);
         }
 
-        InsertAllThreadSafe insertAll = new InsertAllThreadSafe(sessionMediaItemDao, sessionMediaItems);
-        Thread thread = new Thread(insertAll);
-        thread.start();
+        IoDispatch.launch(() -> sessionMediaItemDao.insertAll(sessionMediaItems));
     }
 
     @OptIn(markerClass = UnstableApi.class)
@@ -1390,49 +1387,21 @@ public class AutomotiveRepository {
             sessionMediaItems.add(sessionMediaItem);
         }
 
-        InsertAllThreadSafe insertAll = new InsertAllThreadSafe(sessionMediaItemDao, sessionMediaItems);
-        Thread thread = new Thread(insertAll);
-        thread.start();
+        IoDispatch.launch(() -> sessionMediaItemDao.insertAll(sessionMediaItems));
     }
 
     public SessionMediaItem getSessionMediaItem(String id) {
-        SessionMediaItem sessionMediaItem = null;
-
-        GetMediaItemThreadSafe getMediaItemThreadSafe = new GetMediaItemThreadSafe(sessionMediaItemDao, id);
-        Thread thread = new Thread(getMediaItemThreadSafe);
-        thread.start();
-
-        try {
-            thread.join();
-            sessionMediaItem = getMediaItemThreadSafe.getSessionMediaItem();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        return sessionMediaItem;
+        return IoDispatch.blockingIo(() -> sessionMediaItemDao.get(id));
     }
 
     public List<MediaItem> getMetadatas(long timestamp) {
-        List<MediaItem> mediaItems = Collections.emptyList();
-
-        GetMediaItemsThreadSafe getMediaItemsThreadSafe = new GetMediaItemsThreadSafe(sessionMediaItemDao, timestamp);
-        Thread thread = new Thread(getMediaItemsThreadSafe);
-        thread.start();
-
-        try {
-            thread.join();
-            mediaItems = getMediaItemsThreadSafe.getMediaItems();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        return mediaItems;
+        return IoDispatch.blockingIo(() -> sessionMediaItemDao.get(timestamp).stream()
+                .map(SessionMediaItem::getMediaItem)
+                .collect(Collectors.toList()));
     }
 
     public void deleteMetadata() {
-        DeleteAllThreadSafe delete = new DeleteAllThreadSafe(sessionMediaItemDao);
-        Thread thread = new Thread(delete);
-        thread.start();
+        IoDispatch.launch(sessionMediaItemDao::deleteAll);
     }
 
     public ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> getGenres(String prefix) {
@@ -1543,76 +1512,5 @@ public class AutomotiveRepository {
 
     public ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> getSongsByGenre(String genre, int count) {
         return getSongsByGenre(genre, count, false);
-    }
-
-    private static class GetMediaItemThreadSafe implements Runnable {
-        private final SessionMediaItemDao sessionMediaItemDao;
-        private final String id;
-
-        private SessionMediaItem sessionMediaItem;
-
-        public GetMediaItemThreadSafe(SessionMediaItemDao sessionMediaItemDao, String id) {
-            this.sessionMediaItemDao = sessionMediaItemDao;
-            this.id = id;
-        }
-
-        @Override
-        public void run() {
-            sessionMediaItem = sessionMediaItemDao.get(id);
-        }
-
-        public SessionMediaItem getSessionMediaItem() {
-            return sessionMediaItem;
-        }
-    }
-
-    @OptIn(markerClass = UnstableApi.class)
-    private static class GetMediaItemsThreadSafe implements Runnable {
-        private final SessionMediaItemDao sessionMediaItemDao;
-        private final Long timestamp;
-        private final List<MediaItem> mediaItems = new ArrayList<>();
-
-        public GetMediaItemsThreadSafe(SessionMediaItemDao sessionMediaItemDao, Long timestamp) {
-            this.sessionMediaItemDao = sessionMediaItemDao;
-            this.timestamp = timestamp;
-        }
-
-        @Override
-        public void run() {
-            List<SessionMediaItem> sessionMediaItems = sessionMediaItemDao.get(timestamp);
-            sessionMediaItems.forEach(sessionMediaItem -> mediaItems.add(sessionMediaItem.getMediaItem()));
-        }
-
-        public List<MediaItem> getMediaItems() {
-            return mediaItems;
-        }
-    }
-
-    private static class InsertAllThreadSafe implements Runnable {
-        private final SessionMediaItemDao sessionMediaItemDao;
-        private final List<SessionMediaItem> sessionMediaItems;
-
-        public InsertAllThreadSafe(SessionMediaItemDao sessionMediaItemDao, List<SessionMediaItem> sessionMediaItems) {
-            this.sessionMediaItemDao = sessionMediaItemDao;
-            this.sessionMediaItems = sessionMediaItems;
-        }
-
-        @Override
-        public void run() {
-            sessionMediaItemDao.insertAll(sessionMediaItems);
-        }
-    }
-
-    private static class DeleteAllThreadSafe implements Runnable {
-        private final SessionMediaItemDao sessionMediaItemDao;
-
-        public DeleteAllThreadSafe(SessionMediaItemDao sessionMediaItemDao) {
-            this.sessionMediaItemDao = sessionMediaItemDao;
-        }
-
-        @Override
-        public void run() {
-            sessionMediaItemDao.deleteAll();
-        }
     }
 }

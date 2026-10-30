@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import retrofit2.Response;
 import com.eddyizm.tempus.util.DownloadPreferences;
 import com.eddyizm.tempus.util.ServerPreferences;
+import com.eddyizm.tempus.util.IoDispatch;
 
 /**
  * Rebuilds the download table from the ExoPlayer download index.
@@ -70,7 +71,7 @@ public class DownloadRepair {
 
         Context applicationContext = context.getApplicationContext();
 
-        new Thread(() -> {
+        IoDispatch.launch(() -> {
             try {
                 repair(applicationContext);
             } catch (Exception exception) {
@@ -78,7 +79,7 @@ public class DownloadRepair {
             } finally {
                 RUNNING.set(false);
             }
-        }, "DownloadRepair").start();
+        });
     }
 
     private static void repair(Context context) {

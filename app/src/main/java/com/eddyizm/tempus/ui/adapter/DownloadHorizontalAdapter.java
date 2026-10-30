@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import com.eddyizm.tempus.util.IoDispatch;
 
 @UnstableApi
 public class DownloadHorizontalAdapter extends RecyclerView.Adapter<DownloadHorizontalAdapter.ViewHolder> implements StandardViewTypeAdapter, FastScrollbar.BubbleTextGetter {
@@ -399,7 +400,7 @@ public class DownloadHorizontalAdapter extends RecyclerView.Adapter<DownloadHori
 
             if (coverArtId == null) {
                 // Async lookup from local playlist cache
-                new Thread(() -> {
+                IoDispatch.launch(() -> {
                     String cachedCover = com.eddyizm.tempus.database.AppDatabase.getInstance().playlistDao().getPlaylistCoverArtId(playlistId);
                     if (cachedCover != null) {
                         playlistCoverCache.put(playlistId, cachedCover);
@@ -407,7 +408,7 @@ public class DownloadHorizontalAdapter extends RecyclerView.Adapter<DownloadHori
                             ((android.app.Activity) holder.itemView.getContext()).runOnUiThread(() -> notifyItemChanged(position));
                         }
                     }
-                }).start();
+                });
                 // Fallback to track cover art while loading
                 coverArtId = download.getCoverArtId();
             }

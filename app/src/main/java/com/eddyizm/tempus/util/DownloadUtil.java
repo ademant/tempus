@@ -365,14 +365,14 @@ public final class DownloadUtil {
         } else {
             // The folder index only builds off main. While a rebuild runs it is empty and every track reads as
             // missing, and the writer's own size check is what keeps a file already there from being written again.
-            new Thread(() -> {
+            IoDispatch.launch(() -> {
                 ExternalAudioReader.ensureCache();
                 List<Child> missing = byId.values().stream()
                         .filter(song -> ExternalAudioReader.getUri(song) == null && !ExternalAudioWriter.isPending(song.getId()))
                         .collect(Collectors.toList());
                 missing.forEach(child -> ExternalAudioWriter.downloadToUserDirectory(appContext, child, playlistId, playlistName));
                 main.post(() -> onQueued.accept(missing.size()));
-            }).start();
+            });
         }
     }
 
