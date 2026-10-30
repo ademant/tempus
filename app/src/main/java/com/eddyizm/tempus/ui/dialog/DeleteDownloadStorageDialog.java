@@ -20,7 +20,7 @@ import com.eddyizm.tempus.repository.DownloadRepository;
 import com.eddyizm.tempus.util.DownloadUtil;
 import com.eddyizm.tempus.util.ExternalAudioReader;
 import com.eddyizm.tempus.util.ExternalDownloadMetadataStore;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.DownloadPreferences;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.util.HashMap;
@@ -57,11 +57,11 @@ public class DeleteDownloadStorageDialog extends DialogFragment {
             positiveButton.setOnClickListener(v -> {
                 Context context = requireContext();
                 new Thread(() -> {
-                    if (Preferences.getDownloadDirectoryUri() == null) {
+                    if (DownloadPreferences.getDownloadDirectoryUri() == null) {
                         DownloadUtil.getDownloadTracker(context).removeAll();
                     }
 
-                    String uriString = Preferences.getDownloadDirectoryUri();
+                    String uriString = DownloadPreferences.getDownloadDirectoryUri();
                     if (uriString != null) {
                         DocumentFile directory = DocumentFile.fromTreeUri(context, Uri.parse(uriString));
                         if (directory != null && directory.canWrite()) {

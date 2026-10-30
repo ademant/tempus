@@ -29,7 +29,9 @@ import com.eddyizm.tempus.subsonic.models.Playlist;
 import com.eddyizm.tempus.subsonic.models.Share;
 import com.eddyizm.tempus.util.Constants;
 import com.eddyizm.tempus.util.Constants.SeedType;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.UiPreferences;
+import com.eddyizm.tempus.util.ServerPreferences;
+import com.eddyizm.tempus.util.LibraryPreferences;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 
@@ -77,7 +79,7 @@ public class HomeViewModel extends AndroidViewModel {
 
     private List<HomeSector> sectors;
 
-    private String cachedMusicFolderId = Preferences.getActiveMusicFolderId();
+    private String cachedMusicFolderId = LibraryPreferences.getActiveMusicFolderId();
     private int musicFolderGeneration = 0;
 
     public HomeViewModel(@NonNull Application application) {
@@ -98,7 +100,7 @@ public class HomeViewModel extends AndroidViewModel {
 
         setOfflineFavorite();
 
-        playlistSortOrder.setValue(Preferences.getHomeSortPlaylists());
+        playlistSortOrder.setValue(LibraryPreferences.getHomeSortPlaylists());
         pinnedPlaylists = Transformations.switchMap(playlistSortOrder, sortOrder -> 
             playlistRepository.getSortedPlaylistsPreview(sortOrder, 20)
         );
@@ -118,7 +120,7 @@ public class HomeViewModel extends AndroidViewModel {
 
     public LiveData<List<Chronology>> getChronologySample(LifecycleOwner owner) {
         Calendar cal = Calendar.getInstance();
-        String server = Preferences.getServerId();
+        String server = ServerPreferences.getServerId();
 
         int currentWeek = cal.get(Calendar.WEEK_OF_YEAR);
         long start = cal.getTimeInMillis();
@@ -280,7 +282,7 @@ public class HomeViewModel extends AndroidViewModel {
     }
 
     public void refreshPinnedPlaylists() {
-        playlistSortOrder.setValue(Preferences.getHomeSortPlaylists());
+        playlistSortOrder.setValue(LibraryPreferences.getHomeSortPlaylists());
     }
 
     public LiveData<List<Share>> getShares(LifecycleOwner owner) {
@@ -297,7 +299,7 @@ public class HomeViewModel extends AndroidViewModel {
 
     public void changeChronologyPeriod(LifecycleOwner owner, int period) {
         Calendar cal = Calendar.getInstance();
-        String server = Preferences.getServerId();
+        String server = ServerPreferences.getServerId();
         int currentWeek = cal.get(Calendar.WEEK_OF_YEAR);
 
         long start = 0;
@@ -333,7 +335,7 @@ public class HomeViewModel extends AndroidViewModel {
      * would behave differently for no reason a user can see.
      */
     public boolean clearCacheIfMusicFolderChanged() {
-        String activeMusicFolderId = Preferences.getActiveMusicFolderId();
+        String activeMusicFolderId = LibraryPreferences.getActiveMusicFolderId();
         if (Objects.equals(activeMusicFolderId, cachedMusicFolderId)) return false;
 
         cachedMusicFolderId = activeMusicFolderId;
@@ -440,16 +442,16 @@ public class HomeViewModel extends AndroidViewModel {
     }
 
     private void setHomeSectorList() {
-        if (Preferences.getHomeSectorList() != null && !Preferences.getHomeSectorList().equals("null")) {
+        if (UiPreferences.getHomeSectorList() != null && !UiPreferences.getHomeSectorList().equals("null")) {
             sectors = new Gson().fromJson(
-                    Preferences.getHomeSectorList(),
+                    UiPreferences.getHomeSectorList(),
                     new TypeToken<List<HomeSector>>() {
                     }.getType()
             );
             // Migrate saved layouts that predate the Continue listening sector.
             if (sectors != null && sectors.stream().noneMatch(s -> Constants.HOME_SECTOR_CONTINUE_LISTENING.equals(s.getId()))) {
                 sectors.add(new HomeSector(Constants.HOME_SECTOR_CONTINUE_LISTENING, getApplication().getString(R.string.home_title_continue_listening), true, 2));
-                Preferences.setHomeSectorList(sectors);
+                UiPreferences.setHomeSectorList(sectors);
             }
         }
     }

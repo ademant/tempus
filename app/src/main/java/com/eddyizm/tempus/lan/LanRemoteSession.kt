@@ -12,7 +12,7 @@ import androidx.media3.session.MediaBrowser
 import androidx.media3.session.SessionToken
 import com.eddyizm.tempus.R
 import com.eddyizm.tempus.service.MediaService
-import com.eddyizm.tempus.util.Preferences
+import com.eddyizm.tempus.util.ServerPreferences
 import org.json.JSONObject
 import org.json.JSONArray
 import com.eddyizm.tempus.subsonic.models.Child
@@ -72,11 +72,11 @@ object LanRemoteSession {
 
     @JvmStatic @JvmOverloads fun connect(context: Context, info: NsdServiceInfo, expectedPin: String? = null) {
         disconnect()
-        if (!Preferences.isLanRemoteEnabled()) return
+        if (!ServerPreferences.isLanRemoteEnabled()) return
         val token = generation
         val app = context.applicationContext
         appContext = app
-        val localServer = Preferences.getServer() ?: return
+        val localServer = ServerPreferences.getServer() ?: return
         server = localServer
         target = info
         updates.value = LanRemoteState(active = true, name = info.serviceName)
@@ -87,7 +87,7 @@ object LanRemoteSession {
                 val tls = LanWire.context()
                 while (generation == token && !Thread.currentThread().isInterrupted) {
                     try {
-                        if (Preferences.getServer() != localServer) throw ServerMismatch()
+                        if (ServerPreferences.getServer() != localServer) throw ServerMismatch()
                         val socket = open(tls, info, token, true)
                         socket.use {
                             val peer = LanWire.peer(it)
@@ -99,7 +99,7 @@ object LanRemoteSession {
                             LanDiagnostics.record("Controller subscribed to live playback")
                             while (generation == token) {
                                 val json = LanWire.read(it)
-                                if (Preferences.getServer() != localServer) throw ServerMismatch()
+                                if (ServerPreferences.getServer() != localServer) throw ServerMismatch()
                                 if (json.has("error")) throw RequestRejected()
                                 if (json.optInt("remoteVersion") < 4) throw UpdateRequired()
                                 if (json.optString("server") != LanWire.fingerprint(localServer.trimEnd('/').toByteArray())) throw ServerMismatch()
@@ -224,11 +224,11 @@ object LanRemoteSession {
         val expected = pin ?: return
         commands.execute {
             try {
-                check(generation == token && Preferences.getServer() == server)
+                check(generation == token && ServerPreferences.getServer() == server)
                 val result = open(LanWire.context(), info, token, false).use {
                     if (body.optString("command") == "edit") it.soTimeout = 120000
                     require(LanWire.peer(it) == expected)
-                    check(generation == token && Preferences.getServer() == server)
+                    check(generation == token && ServerPreferences.getServer() == server)
                     LanWire.write(it, body)
                     LanWire.read(it).also { response ->
                         if (response.optString("error") == "queue_changed") throw QueueChanged()

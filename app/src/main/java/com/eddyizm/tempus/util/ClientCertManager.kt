@@ -44,8 +44,8 @@ object ClientCertManager {
                     issuers: Array<Principal>?,
                     socket: Socket?
                 ): String? {
-                    val clientCert = Preferences.getClientCert() ?: return null
-                    val server = Preferences.getServer() ?: return null
+                    val clientCert = ServerPreferences.getClientCert() ?: return null
+                    val server = ServerPreferences.getServer() ?: return null
                     return if (server.toUri().host == socket?.inetAddress?.hostName) {
                         clientCert
                     } else null
@@ -60,7 +60,7 @@ object ClientCertManager {
                 ) = null
 
                 override fun getCertificateChain(alias: String?): Array<X509Certificate>? {
-                    val clientCert = Preferences.getClientCert()
+                    val clientCert = ServerPreferences.getClientCert()
                     return if (alias == clientCert && clientCert != null) {
                         KeyChain.getCertificateChain(
                             context,
@@ -70,7 +70,7 @@ object ClientCertManager {
                 }
 
                 override fun getPrivateKey(alias: String?): PrivateKey? {
-                    val clientCert = Preferences.getClientCert()
+                    val clientCert = ServerPreferences.getClientCert()
                     return if (alias == clientCert && clientCert != null) {
                         KeyChain.getPrivateKey(
                             context,

@@ -35,6 +35,8 @@ import com.eddyizm.tempus.util.Constants;
 import com.eddyizm.tempus.util.MappingUtil;
 import com.eddyizm.tempus.util.ConnectionUtil;
 import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.ServerPreferences;
+import com.eddyizm.tempus.util.PlaybackPreferences;
 import com.eddyizm.tempus.viewmodel.PlaybackViewModel;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
@@ -657,7 +659,7 @@ public class MediaManager {
     }
 
     public static void scrobble(MediaItem mediaItem, boolean submission) {
-        if (mediaItem != null && mediaItem.mediaMetadata.extras != null && Preferences.isScrobblingEnabled()) {
+        if (mediaItem != null && mediaItem.mediaMetadata.extras != null && ServerPreferences.isScrobblingEnabled()) {
             getSongRepository().scrobble(mediaItem.mediaMetadata.extras.getString("id"), submission);
         }
     }
@@ -677,7 +679,7 @@ public class MediaManager {
     public static void continuousPlay(MediaItem mediaItem,
                                       QueueTarget queueTarget,
                                       @Nullable Runnable onComplete) {
-        if (continuousPlayIsRunning.get() || !Preferences.isInstantMixUsable()) {
+        if (continuousPlayIsRunning.get() || !PlaybackPreferences.isInstantMixUsable()) {
             Log.d(TAG, "Continuous Play: already running");
             if (onComplete != null) onComplete.run();
             return;
@@ -690,11 +692,11 @@ public class MediaManager {
         }
         Log.d(TAG, "Continuous Play");
 
-        Preferences.setLastInstantMix();
+        PlaybackPreferences.setLastInstantMix();
         continuousPlayIsRunning.set(true);
 
         // keep only NUMBER_TRACKS_KEEP_IN_QUEUE items in queue before starting continuous play
-        int numberOfTracksKeepInQueue = Preferences.getNumberOfTracksKeepInQueue();
+        int numberOfTracksKeepInQueue = PlaybackPreferences.getNumberOfTracksKeepInQueue();
         int currentIndex = player.getCurrentMediaItem() != null
                 ? player.getCurrentMediaItemIndex()
                 : 0;
@@ -729,7 +731,7 @@ public class MediaManager {
                     }
                 }
 
-                if (Preferences.isFallbackToRandomTracksEnabled()) {
+                if (PlaybackPreferences.isFallbackToRandomTracksEnabled()) {
                     Log.w(TAG, "Continuous Play: no new similar tracks, falling back to random songs");
                     LiveData<List<Child>> randomSongs = getSongRepository().getRandomSample(25, null, null);
                     randomSongs.observeForever(new Observer<List<Child>>() {

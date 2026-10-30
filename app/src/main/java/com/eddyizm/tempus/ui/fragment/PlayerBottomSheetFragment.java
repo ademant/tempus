@@ -40,6 +40,8 @@ import com.eddyizm.tempus.util.Constants;
 import com.eddyizm.tempus.util.MusicUtil;
 import com.eddyizm.tempus.util.RadioCoverArtDownloader;
 import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.PlaybackPreferences;
+import com.eddyizm.tempus.util.DownloadPreferences;
 import com.eddyizm.tempus.viewmodel.PlayerBottomSheetViewModel;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
@@ -170,8 +172,8 @@ public class PlayerBottomSheetFragment extends Fragment {
             try {
                 MediaBrowser mediaBrowser = mediaBrowserListenableFuture.get();
 
-                mediaBrowser.setShuffleModeEnabled(Preferences.isShuffleModeEnabled());
-                mediaBrowser.setRepeatMode(Preferences.getRepeatMode());
+                mediaBrowser.setShuffleModeEnabled(PlaybackPreferences.isShuffleModeEnabled());
+                mediaBrowser.setRepeatMode(PlaybackPreferences.getRepeatMode());
 
                 setMediaControllerListener(mediaBrowser);
                 if (playbackViewModel != null) {
@@ -231,12 +233,12 @@ public class PlayerBottomSheetFragment extends Fragment {
 
             @Override
             public void onShuffleModeEnabledChanged(boolean shuffleModeEnabled) {
-                Preferences.setShuffleModeEnabled(shuffleModeEnabled);
+                PlaybackPreferences.setShuffleModeEnabled(shuffleModeEnabled);
             }
 
             @Override
             public void onRepeatModeChanged(int repeatMode) {
-                Preferences.setRepeatMode(repeatMode);
+                PlaybackPreferences.setRepeatMode(repeatMode);
             }
         });
     }
@@ -510,7 +512,7 @@ public class PlayerBottomSheetFragment extends Fragment {
     }
 
     private void setHeaderBookmarksButton() {
-        if (Preferences.isSyncronizationEnabled()) {
+        if (DownloadPreferences.isSyncronizationEnabled()) {
             playerBottomSheetViewModel.getPlayQueue().observeForever(new Observer<PlayQueue>() {
                 @Override
                 public void onChanged(PlayQueue playQueue) {

@@ -67,7 +67,11 @@ import com.eddyizm.tempus.util.AlbumArtistBackfill;
 import com.eddyizm.tempus.util.DownloadRepair;
 import com.eddyizm.tempus.repository.PlaylistRepository;
 import com.eddyizm.tempus.util.ConnectionUtil;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.UiPreferences;
+import com.eddyizm.tempus.util.StreamingPreferences;
+import com.eddyizm.tempus.util.ServerPreferences;
+import com.eddyizm.tempus.util.PlaybackPreferences;
+import com.eddyizm.tempus.util.DownloadPreferences;
 import com.eddyizm.tempus.viewmodel.MainViewModel;
 import com.eddyizm.tempus.util.FavoriteRegistry;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -229,7 +233,7 @@ public class MainActivity extends BaseActivity {
         initNavigation();
         initBackPressedDispatcher();
 
-        if (Preferences.getPassword() != null || (Preferences.getToken() != null && Preferences.getSalt() != null)) {
+        if (ServerPreferences.getPassword() != null || (ServerPreferences.getToken() != null && ServerPreferences.getSalt() != null)) {
             goFromLogin();
         } else {
             goToLogin();
@@ -420,7 +424,7 @@ public class MainActivity extends BaseActivity {
     public void toggleBottomNavigationBarVisibilityOnOrientationChange() {
         float displayDensity = getResources().getDisplayMetrics().density;
         // Ignore orientation change, bottom navbar always hidden
-        if (Preferences.getHideBottomNavbarOnPortrait()) {
+        if (UiPreferences.getHideBottomNavbarOnPortrait()) {
             navigationController.setNavbarVisibility(false);
             bottomSheetController.setPeekHeight(56, displayDensity);
             navigationController.setSystemBarsVisibility(this, !isLandscape);
@@ -559,23 +563,23 @@ public class MainActivity extends BaseActivity {
         FavoriteRegistry.clear();
 
         PlaylistRepository.resetKeptSync();
-        Preferences.setServerId(null);
-        Preferences.setSalt(null);
-        Preferences.setToken(null);
-        Preferences.setPassword(null);
-        Preferences.setServer(null);
-        Preferences.setLocalAddress(null);
-        Preferences.setUser(null);
-        Preferences.setClientCert(null);
-        Preferences.setCustomHeaders(null);
+        ServerPreferences.setServerId(null);
+        ServerPreferences.setSalt(null);
+        ServerPreferences.setToken(null);
+        ServerPreferences.setPassword(null);
+        ServerPreferences.setServer(null);
+        ServerPreferences.setLocalAddress(null);
+        ServerPreferences.setUser(null);
+        ServerPreferences.setClientCert(null);
+        ServerPreferences.setCustomHeaders(null);
 
         // TODO Enter all settings to be reset
-        Preferences.setOpenSubsonic(false);
-        Preferences.setPlaybackSpeed(1.0f);
-        Preferences.setSkipSilenceMode(false);
-        Preferences.setDataSavingMode(false);
-        Preferences.setStarredSyncEnabled(false);
-        Preferences.setStarredAlbumsSyncEnabled(false);
+        ServerPreferences.setOpenSubsonic(false);
+        PlaybackPreferences.setPlaybackSpeed(1.0f);
+        PlaybackPreferences.setSkipSilenceMode(false);
+        StreamingPreferences.setDataSavingMode(false);
+        DownloadPreferences.setStarredSyncEnabled(false);
+        DownloadPreferences.setStarredAlbumsSyncEnabled(false);
     }
 
     private void resetMusicSession() {
@@ -602,7 +606,7 @@ public class MainActivity extends BaseActivity {
     }
 
     private void pingServer() {
-        if (Preferences.getToken() == null && Preferences.getPassword() == null) return;
+        if (ServerPreferences.getToken() == null && ServerPreferences.getPassword() == null) return;
         if (isLocalNetworkRequestOpen()) {
             ConnectionUtil.deferPing();
             return;
@@ -611,48 +615,48 @@ public class MainActivity extends BaseActivity {
         ConnectionUtil.markPingIssued();
         ConnectionUtil.endPingDeferral();
 
-        if (Preferences.isInUseServerAddressLocal()) {
+        if (ServerPreferences.isInUseServerAddressLocal()) {
             mainViewModel.ping().observe(this, subsonicResponse -> {
                 if (subsonicResponse == null) {
                     ConnectionUtil.markPingAnswered();
-                    if (!Preferences.isInUseServerAddressLocal()) return;
+                    if (!ServerPreferences.isInUseServerAddressLocal()) return;
 
                     // Switching only helps when remote and local are different addresses. When
                     // they're equal (issue #242) the switch is a no-op, so we'd
                     // re-enter this branch forever (ping/refresh/resetView loop). Treat that case
                     // like an unreachable server instead of looping.
-                    String server = Preferences.getServer();
-                    if (server != null && !server.equals(Preferences.getLocalAddress())) {
-                        Preferences.setServerSwitchableTimer();
+                    String server = ServerPreferences.getServer();
+                    if (server != null && !server.equals(ServerPreferences.getLocalAddress())) {
+                        ServerPreferences.setServerSwitchableTimer();
                         ConnectionUtil.useServerAddress(server);
                         pingServer();
                         resetView();
-                    } else if (Preferences.showServerUnreachableDialog()) {
+                    } else if (ServerPreferences.showServerUnreachableDialog()) {
                         ServerUnreachableDialog dialog = new ServerUnreachableDialog();
                         dialog.show(getSupportFragmentManager(), null);
                     }
                 } else {
                     ConnectionUtil.markPingAnswered();
-                    Preferences.setOpenSubsonic(subsonicResponse.getOpenSubsonic() != null && subsonicResponse.getOpenSubsonic());
+                    ServerPreferences.setOpenSubsonic(subsonicResponse.getOpenSubsonic() != null && subsonicResponse.getOpenSubsonic());
                 }
             });
         } else {
             if (outstandingProbe != null) {
                 ConnectionUtil.markPingAnswered();
-            } else if (Preferences.isServerSwitchable()) {
+            } else if (ServerPreferences.isServerSwitchable()) {
                 probeLocalAddress();
             } else {
                 mainViewModel.ping().observe(this, subsonicResponse -> {
                     ConnectionUtil.markPingAnswered();
                     if (subsonicResponse == null) {
-                        if (Preferences.isInUseServerAddressLocal() || outstandingProbe != null) return;
+                        if (ServerPreferences.isInUseServerAddressLocal() || outstandingProbe != null) return;
 
-                        if (Preferences.showServerUnreachableDialog()) {
+                        if (ServerPreferences.showServerUnreachableDialog()) {
                             ServerUnreachableDialog dialog = new ServerUnreachableDialog();
                             dialog.show(getSupportFragmentManager(), null);
                         }
                     } else {
-                        Preferences.setOpenSubsonic(subsonicResponse.getOpenSubsonic() != null && subsonicResponse.getOpenSubsonic());
+                        ServerPreferences.setOpenSubsonic(subsonicResponse.getOpenSubsonic() != null && subsonicResponse.getOpenSubsonic());
                     }
                 });
             }
@@ -660,7 +664,7 @@ public class MainActivity extends BaseActivity {
     }
 
     private void probeLocalAddress() {
-        String probedAddress = Preferences.getLocalAddress();
+        String probedAddress = ServerPreferences.getLocalAddress();
         LiveData<SubsonicResponse> probe = mainViewModel.pingLocalAddress();
         outstandingProbe = probe;
 
@@ -670,11 +674,11 @@ public class MainActivity extends BaseActivity {
 
             if (!isCurrentProbe
                     || subsonicResponse == null
-                    || !probedAddress.equals(Preferences.getLocalAddress())) {
+                    || !probedAddress.equals(ServerPreferences.getLocalAddress())) {
                 ConnectionUtil.markPingAnswered();
 
                 if (isCurrentProbe && subsonicResponse == null) {
-                    Preferences.setServerSwitchableTimer();
+                    ServerPreferences.setServerSwitchableTimer();
                     pingServer();
                 }
                 return;
@@ -699,17 +703,17 @@ public class MainActivity extends BaseActivity {
     }
 
     private void getOpenSubsonicExtensions() {
-        if (Preferences.getToken() != null || Preferences.getPassword() != null) {
+        if (ServerPreferences.getToken() != null || ServerPreferences.getPassword() != null) {
             mainViewModel.getOpenSubsonicExtensions().observe(this, openSubsonicExtensions -> {
                 if (openSubsonicExtensions != null) {
-                    Preferences.setOpenSubsonicExtensions(openSubsonicExtensions);
+                    ServerPreferences.setOpenSubsonicExtensions(openSubsonicExtensions);
                 }
             });
         }
     }
 
     private void checkTempusUpdate() {
-        if (BuildConfig.FLAVOR.equals("tempus") && Preferences.isGithubUpdateEnabled() && Preferences.showTempusUpdateDialog()) {
+        if (BuildConfig.FLAVOR.equals("tempus") && UiPreferences.isGithubUpdateEnabled() && UiPreferences.showTempusUpdateDialog()) {
             mainViewModel.checkTempusUpdate().observe(this, latestRelease -> {
                 if (latestRelease != null && UpdateUtil.showUpdateDialog(latestRelease)) {
                     GithubTempoUpdateDialog dialog = new GithubTempoUpdateDialog(latestRelease);
@@ -720,7 +724,7 @@ public class MainActivity extends BaseActivity {
     }
 
     private void checkConnectionType() {
-        if (Preferences.isWifiOnly()) {
+        if (StreamingPreferences.isWifiOnly()) {
             ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
             Network network = connectivityManager.getActiveNetwork();
             NetworkCapabilities capabilities = network == null ? null : connectivityManager.getNetworkCapabilities(network);
@@ -790,8 +794,8 @@ public class MainActivity extends BaseActivity {
     }
 
     private boolean isUserAuthenticated() {
-        return Preferences.getPassword() != null
-                || (Preferences.getToken() != null && Preferences.getSalt() != null);
+        return ServerPreferences.getPassword() != null
+                || (ServerPreferences.getToken() != null && ServerPreferences.getSalt() != null);
     }
 
     private void consumePendingAssetLink() {

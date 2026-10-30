@@ -66,6 +66,8 @@ import com.eddyizm.tempus.util.ExternalAudioWriter;
 import com.eddyizm.tempus.util.MappingUtil;
 import com.eddyizm.tempus.util.MusicUtil;
 import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.ServerPreferences;
+import com.eddyizm.tempus.util.DownloadPreferences;
 import com.eddyizm.tempus.util.TileSizeManager;
 import com.eddyizm.tempus.util.UIUtil;
 import com.eddyizm.tempus.viewmodel.HomeViewModel;
@@ -304,7 +306,7 @@ public class HomeTabMusicFragment extends Fragment implements ClickCallback {
     }
 
     private void initSyncStarredView() {
-        if (Preferences.isStarredSyncEnabled()) {
+        if (DownloadPreferences.isStarredSyncEnabled()) {
             homeViewModel.getAllStarredTracks().observe(getViewLifecycleOwner(), new Observer<List<Child>>() {
                 @Override
                 public void onChanged(List<Child> songs) {
@@ -312,7 +314,7 @@ public class HomeTabMusicFragment extends Fragment implements ClickCallback {
                         int songsToSyncCount = 0;
                         List<String> toSyncSample = new ArrayList<>();
 
-                        if (Preferences.getDownloadDirectoryUri() == null) {
+                        if (DownloadPreferences.getDownloadDirectoryUri() == null) {
                             DownloaderManager manager = DownloadUtil.getDownloadTracker(requireContext());
                             for (Child song : songs) {
                                 if (!manager.isDownloaded(song.getId())) {
@@ -383,7 +385,7 @@ public class HomeTabMusicFragment extends Fragment implements ClickCallback {
                         if (songs != null && !songs.isEmpty()) {
                             int downloadedCount = 0;
 
-                            if (Preferences.getDownloadDirectoryUri() == null) {
+                            if (DownloadPreferences.getDownloadDirectoryUri() == null) {
                                 DownloaderManager manager = DownloadUtil.getDownloadTracker(requireContext());
                                 for (Child song : songs) {
                                     if (!manager.isDownloaded(song.getId())) {
@@ -419,7 +421,7 @@ public class HomeTabMusicFragment extends Fragment implements ClickCallback {
 
     private void initSyncStarredAlbumsView() {
 
-        if (Preferences.isStarredAlbumsSyncEnabled()) {
+        if (DownloadPreferences.isStarredAlbumsSyncEnabled()) {
             homeViewModel.getStarredAlbums(getViewLifecycleOwner()).observe(getViewLifecycleOwner(), new Observer<List<AlbumID3>>() {
                 @Override
                 public void onChanged(List<AlbumID3> albums) {
@@ -444,7 +446,7 @@ public class HomeTabMusicFragment extends Fragment implements ClickCallback {
                     if (allSongs != null && !allSongs.isEmpty()) {
                         int songsToDownload = 0;
 
-                        if (Preferences.getDownloadDirectoryUri() == null) {
+                        if (DownloadPreferences.getDownloadDirectoryUri() == null) {
                             DownloaderManager manager = DownloadUtil.getDownloadTracker(requireContext());
                             for (Child song : allSongs) {
                                 if (!manager.isDownloaded(song.getId())) {
@@ -485,7 +487,7 @@ public class HomeTabMusicFragment extends Fragment implements ClickCallback {
                     int songsToDownload = 0;
                     List<String> albumsNeedingSync = new ArrayList<>();
 
-                    if (Preferences.getDownloadDirectoryUri() == null) {
+                    if (DownloadPreferences.getDownloadDirectoryUri() == null) {
                         DownloaderManager manager = DownloadUtil.getDownloadTracker(requireContext());
                         
                         for (AlbumID3 album : albums) {
@@ -558,7 +560,7 @@ public class HomeTabMusicFragment extends Fragment implements ClickCallback {
     }
 
     private void initSyncStarredArtistsView() {
-        if (Preferences.isStarredArtistsSyncEnabled()) {
+        if (DownloadPreferences.isStarredArtistsSyncEnabled()) {
             homeViewModel.getStarredArtists(getViewLifecycleOwner()).observe(getViewLifecycleOwner(), new Observer<List<ArtistID3>>() {
                 @Override
                 public void onChanged(List<ArtistID3> artists) {
@@ -583,7 +585,7 @@ public class HomeTabMusicFragment extends Fragment implements ClickCallback {
                     if (allSongs != null && !allSongs.isEmpty()) {
                         int songsToDownload = 0;
 
-                        if (Preferences.getDownloadDirectoryUri() == null) {
+                        if (DownloadPreferences.getDownloadDirectoryUri() == null) {
                             DownloaderManager manager = DownloadUtil.getDownloadTracker(requireContext());
                             for (Child song : allSongs) {
                                 if (!manager.isDownloaded(song.getId())) {
@@ -624,7 +626,7 @@ public class HomeTabMusicFragment extends Fragment implements ClickCallback {
                     int songsToDownload = 0;
                     List<String> artistsNeedingSync = new ArrayList<>();
 
-                    if (Preferences.getDownloadDirectoryUri() == null) {
+                    if (DownloadPreferences.getDownloadDirectoryUri() == null) {
                         DownloaderManager manager = DownloadUtil.getDownloadTracker(requireContext());
                         
                         for (ArtistID3 artist : artists) {
@@ -1132,7 +1134,7 @@ public class HomeTabMusicFragment extends Fragment implements ClickCallback {
 
         shareHorizontalAdapter = new ShareHorizontalAdapter(this);
         bind.sharesRecyclerView.setAdapter(shareHorizontalAdapter);
-        if (Preferences.isSharingEnabled()) {
+        if (ServerPreferences.isSharingEnabled()) {
             homeViewModel.getShares(getViewLifecycleOwner()).observe(getViewLifecycleOwner(), shares -> {
                 if (shares == null) {
                     if (bind != null) bind.sharesSector.setVisibility(View.GONE);
@@ -1181,7 +1183,7 @@ public class HomeTabMusicFragment extends Fragment implements ClickCallback {
     private void refreshSharesView() {
         final Handler handler = new Handler(Looper.getMainLooper());
         final Runnable runnable = () -> {
-            if (getView() != null && bind != null && Preferences.isSharingEnabled()) {
+            if (getView() != null && bind != null && ServerPreferences.isSharingEnabled()) {
                 homeViewModel.refreshShares(getViewLifecycleOwner());
             }
         };

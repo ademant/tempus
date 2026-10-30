@@ -33,6 +33,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import androidx.media3.common.util.UnstableApi;
+import com.eddyizm.tempus.util.DownloadPreferences;
 
 @UnstableApi
 public class ExternalAudioWriter {
@@ -107,7 +108,7 @@ public class ExternalAudioWriter {
         DownloadProgressState.getInstance().setCurrentTrackTitle(
                 child.getTitle() != null ? child.getTitle() : fallbackName);
 
-        String uriString = Preferences.getDownloadDirectoryUri();
+        String uriString = DownloadPreferences.getDownloadDirectoryUri();
         if (uriString == null) {
             notifyUnavailable(context);
             DownloadProgressState.getInstance().onFailed(context);

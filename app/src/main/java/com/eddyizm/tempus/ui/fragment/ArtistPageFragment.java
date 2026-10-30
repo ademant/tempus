@@ -46,7 +46,7 @@ import com.eddyizm.tempus.ui.adapter.ArtistCarouselAdapter;
 import com.eddyizm.tempus.ui.adapter.SongHorizontalAdapter;
 import com.eddyizm.tempus.util.Constants;
 import com.eddyizm.tempus.util.MusicUtil;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.LibraryPreferences;
 import com.eddyizm.tempus.util.TileSizeManager;
 import com.eddyizm.tempus.viewmodel.ArtistPageViewModel;
 import com.eddyizm.tempus.viewmodel.PlaybackViewModel;
@@ -285,13 +285,13 @@ public class ArtistPageFragment extends Fragment implements ClickCallback {
                         Button bioToggle = view.findViewById(R.id.button_toggle_bio);
                         bioToggle.setOnClickListener(v -> {
                             if (bind != null) {
-                                boolean displayBio = Preferences.getArtistDisplayBiography();
-                                Preferences.setArtistDisplayBiography(!displayBio);
+                                boolean displayBio = LibraryPreferences.getArtistDisplayBiography();
+                                LibraryPreferences.setArtistDisplayBiography(!displayBio);
                                 bind.artistPageBioSector.setVisibility(displayBio ? View.GONE : View.VISIBLE);
                             }
                         });
 
-                        boolean displayBio = Preferences.getArtistDisplayBiography();
+                        boolean displayBio = LibraryPreferences.getArtistDisplayBiography();
                         bind.artistPageBioSector.setVisibility(displayBio ? View.VISIBLE : View.GONE);
                     }
                 }

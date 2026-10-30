@@ -48,7 +48,8 @@ import com.eddyizm.tempus.util.DownloadUtil;
 import com.eddyizm.tempus.util.MappingUtil;
 import com.eddyizm.tempus.util.MusicUtil;
 import com.eddyizm.tempus.util.ExternalAudioWriter;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.LibraryPreferences;
+import com.eddyizm.tempus.util.DownloadPreferences;
 import com.eddyizm.tempus.viewmodel.AlbumPageViewModel;
 import com.eddyizm.tempus.viewmodel.PlaybackViewModel;
 import com.eddyizm.tempus.util.FavoriteRegistry;
@@ -173,7 +174,7 @@ public class AlbumPageFragment extends Fragment implements ClickCallback {
             if (songs == null || songs.isEmpty()) {
                 return true;
             }
-            if (Preferences.getDownloadDirectoryUri() == null) {
+            if (DownloadPreferences.getDownloadDirectoryUri() == null) {
                 DownloadUtil.getDownloadTracker(requireContext()).download(
                     MappingUtil.mapDownloads(songs),
                     songs.stream().map(Download::new).collect(Collectors.toList())
@@ -313,7 +314,7 @@ public class AlbumPageFragment extends Fragment implements ClickCallback {
             }
         });
 
-        if(Preferences.showAlbumDetail()){
+        if(LibraryPreferences.showAlbumDetail()){
             bind.albumDetailView.setVisibility(View.VISIBLE);
         }
     }

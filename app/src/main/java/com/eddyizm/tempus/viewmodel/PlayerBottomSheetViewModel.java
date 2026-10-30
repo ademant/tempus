@@ -36,6 +36,7 @@ import com.eddyizm.tempus.util.MappingUtil;
 import com.eddyizm.tempus.util.NetworkUtil;
 import com.eddyizm.tempus.util.OpenSubsonicExtensionsUtil;
 import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.DownloadPreferences;
 import com.eddyizm.tempus.util.FavoriteRegistry;
 import com.google.gson.Gson;
 
@@ -134,7 +135,7 @@ public class PlayerBottomSheetViewModel extends AndroidViewModel {
 
         media.setStarred(new Date());
 
-        if (Preferences.isStarredSyncEnabled() && Preferences.getDownloadDirectoryUri() == null) {
+        if (DownloadPreferences.isStarredSyncEnabled() && DownloadPreferences.getDownloadDirectoryUri() == null) {
             DownloadUtil.getDownloadTracker(context).download(
                     MappingUtil.mapDownload(media),
                     new Download(media)
@@ -383,7 +384,7 @@ public class PlayerBottomSheetViewModel extends AndroidViewModel {
     }
 
     private boolean shouldAutoDownloadLyrics() {
-        return Preferences.isAutoDownloadLyricsEnabled();
+        return DownloadPreferences.isAutoDownloadLyricsEnabled();
     }
 
     public boolean downloadCurrentLyrics() {

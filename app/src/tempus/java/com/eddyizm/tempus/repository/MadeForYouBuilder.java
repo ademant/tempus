@@ -1,7 +1,7 @@
 package com.eddyizm.tempus.repository;
 
 import static com.eddyizm.tempus.service.MediaManager.enqueue;
-import static com.eddyizm.tempus.util.Preferences.getServerId;
+import static com.eddyizm.tempus.util.ServerPreferences.getServerId;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.Observer;
@@ -20,6 +20,8 @@ import com.eddyizm.tempus.subsonic.models.Child;
 import com.eddyizm.tempus.subsonic.models.Starred2;
 import com.eddyizm.tempus.util.ConstantsAA;
 import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.ServerPreferences;
+import com.eddyizm.tempus.util.AutomotivePreferences;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -276,7 +278,7 @@ public class MadeForYouBuilder {
             switch (posInCycle) {
                 case 0: case 2: return MixStep.RECENT;
                 default:
-                    switch (Preferences.getAndroidAutoStarredForMadeForYou()) {
+                    switch (AutomotivePreferences.getAndroidAutoStarredForMadeForYou()) {
                         case 2: return MixStep.STARRED_TRACKS;
                         case 1: return MixStep.STARRED_ALBUM;
                         case 0: default: return MixStep.STARRED_ARTIST;

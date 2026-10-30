@@ -7,7 +7,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import com.eddyizm.tempus.repository.AutomotiveRepository
 import com.eddyizm.tempus.util.ConstantsAA
-import com.eddyizm.tempus.util.Preferences
+import com.eddyizm.tempus.util.PlaybackPreferences
 import kotlin.text.removePrefix
 
 private const val TAG = "TracksChangedExtension"
@@ -31,7 +31,7 @@ class TracksChangedExtension(
         val parentId = extras?.getString("parent_id")
 
         if (parentId?.startsWith(ConstantsAA.INSTANTMIX_SOURCE) == true) {
-            Preferences.setLastInstantMix()
+            PlaybackPreferences.setLastInstantMix()
 
             // disconnect handle
             MediaServiceExtensionRegistry.handler = null
@@ -53,7 +53,7 @@ class TracksChangedExtension(
         }
 
         if (parentId?.startsWith(ConstantsAA.MADE_FOR_YOU_SOURCE) == true) {
-            Preferences.setLastInstantMix()
+            PlaybackPreferences.setLastInstantMix()
 
             // disconnect handle
             MediaServiceExtensionRegistry.handler = null

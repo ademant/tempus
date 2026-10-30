@@ -18,6 +18,7 @@ import com.eddyizm.tempus.subsonic.models.Child;
 import com.eddyizm.tempus.subsonic.models.Bookmark;
 import com.eddyizm.tempus.subsonic.models.PlayQueue;
 import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.DownloadPreferences;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -129,7 +130,7 @@ public class QueueRepository {
      * would pair the old song list with the station or episode as the current item.
      */
     public void savePlayQueueToServer(String current, long position) {
-        if (!Preferences.isSyncronizationEnabled()) return;
+        if (!DownloadPreferences.isSyncronizationEnabled()) return;
         dbExecutor.execute(() -> {
             List<String> ids = queueDao.getAllSimple().stream()
                     .map(Queue::getId)

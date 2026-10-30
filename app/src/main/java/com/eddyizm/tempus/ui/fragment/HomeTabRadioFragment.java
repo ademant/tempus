@@ -26,7 +26,7 @@ import com.eddyizm.tempus.ui.activity.MainActivity;
 import com.eddyizm.tempus.ui.adapter.InternetRadioStationAdapter;
 import com.eddyizm.tempus.ui.dialog.RadioEditorDialog;
 import com.eddyizm.tempus.util.Constants;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.UiPreferences;
 import com.eddyizm.tempus.viewmodel.RadioViewModel;
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -92,7 +92,7 @@ public class HomeTabRadioFragment extends Fragment implements ClickCallback, Rad
             return true;
         });
 
-        bind.hideSectionButton.setOnClickListener(v -> Preferences.setRadioSectionHidden());
+        bind.hideSectionButton.setOnClickListener(v -> UiPreferences.setRadioSectionHidden());
     }
 
     private void initRadioStationView() {

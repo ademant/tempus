@@ -38,7 +38,8 @@ import com.eddyizm.tempus.util.DownloadUtil;
 import com.eddyizm.tempus.util.ExternalAudioReader;
 import com.eddyizm.tempus.util.MappingUtil;
 import com.eddyizm.tempus.util.MusicUtil;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.ServerPreferences;
+import com.eddyizm.tempus.util.DownloadPreferences;
 import com.eddyizm.tempus.viewmodel.HomeViewModel;
 import com.eddyizm.tempus.viewmodel.PlaylistPageViewModel;
 import com.eddyizm.tempus.viewmodel.SongBottomSheetViewModel;
@@ -222,7 +223,7 @@ public class SongBottomSheetDialog extends BottomSheetDialogFragment implements 
 
         downloadButton = view.findViewById(R.id.download_text_view);
         downloadButton.setOnClickListener(v -> {
-            if (Preferences.getDownloadDirectoryUri() == null) {
+            if (DownloadPreferences.getDownloadDirectoryUri() == null) {
                 Download download = new Download(song);
                 download.setPlaylistId(playlistId);
                 download.setPlaylistName(playlistName);
@@ -239,7 +240,7 @@ public class SongBottomSheetDialog extends BottomSheetDialogFragment implements 
 
         removeButton = view.findViewById(R.id.remove_text_view);
         removeButton.setOnClickListener(v -> {
-            if (Preferences.getDownloadDirectoryUri() == null) {
+            if (DownloadPreferences.getDownloadDirectoryUri() == null) {
                 DownloadUtil.getDownloadTracker(requireContext()).remove(
                         MappingUtil.mapDownload(song),
                         new Download(song)
@@ -357,7 +358,7 @@ public class SongBottomSheetDialog extends BottomSheetDialogFragment implements 
             }
         }));
 
-        share.setVisibility(Preferences.isSharingEnabled() ? View.VISIBLE : View.GONE);
+        share.setVisibility(ServerPreferences.isSharingEnabled() ? View.VISIBLE : View.GONE);
     }
 
     @Override
@@ -374,7 +375,7 @@ public class SongBottomSheetDialog extends BottomSheetDialogFragment implements 
             return;
         }
 
-        if (Preferences.getDownloadDirectoryUri() == null) {
+        if (DownloadPreferences.getDownloadDirectoryUri() == null) {
             boolean downloaded = DownloadUtil.getDownloadTracker(requireContext()).isDownloaded(song.getId());
             downloadButton.setVisibility(downloaded ? View.GONE : View.VISIBLE);
             removeButton.setVisibility(downloaded ? View.VISIBLE : View.GONE);

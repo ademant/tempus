@@ -2,7 +2,7 @@ package com.eddyizm.tempus.equalizer
 
 import android.content.Context
 import android.media.audiofx.Equalizer
-import com.eddyizm.tempus.util.Preferences
+import com.eddyizm.tempus.util.PlaybackPreferences
 
 class BuiltinBackend: EqualizerBackend {
     private var equalizer: Equalizer? = null
@@ -11,10 +11,10 @@ class BuiltinBackend: EqualizerBackend {
         if (audioSessionId == 0 || audioSessionId == -1) return false
         val attached = attachToSession(audioSessionId, context.applicationContext)
         if (attached) {
-            val enabled = Preferences.isEqualizerEnabled()
+            val enabled = PlaybackPreferences.isEqualizerEnabled()
             setEnabled(enabled)
             val bands = getNumberOfBands()
-            val savedLevels = Preferences.getEqualizerBandLevels(bands)
+            val savedLevels = PlaybackPreferences.getEqualizerBandLevels(bands)
             for (i in 0 until bands) {
                 setBandLevel(i.toShort(), savedLevels[i])
             }

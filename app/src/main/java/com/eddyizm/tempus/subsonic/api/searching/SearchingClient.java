@@ -5,7 +5,7 @@ import android.util.Log;
 import com.eddyizm.tempus.subsonic.RetrofitClient;
 import com.eddyizm.tempus.subsonic.Subsonic;
 import com.eddyizm.tempus.subsonic.base.ApiResponse;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.LibraryPreferences;
 
 import retrofit2.Call;
 
@@ -27,6 +27,6 @@ public class SearchingClient {
 
     public Call<ApiResponse> search3(String query, int songCount, int songOffset, int albumCount, int albumOffset, int artistCount, int artistOffset) {
         Log.d(TAG, "search3()");
-        return searchingService.search3(subsonic.getParams(), query, songCount, songOffset, albumCount, albumOffset, artistCount, artistOffset, Preferences.getActiveMusicFolderId());
+        return searchingService.search3(subsonic.getParams(), query, songCount, songOffset, albumCount, albumOffset, artistCount, artistOffset, LibraryPreferences.getActiveMusicFolderId());
     }
 }

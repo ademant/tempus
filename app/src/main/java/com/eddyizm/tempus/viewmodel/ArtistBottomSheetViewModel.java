@@ -20,7 +20,7 @@ import com.eddyizm.tempus.subsonic.models.Child;
 import com.eddyizm.tempus.util.NetworkUtil;
 import com.eddyizm.tempus.util.DownloadUtil;
 import com.eddyizm.tempus.util.MappingUtil;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.DownloadPreferences;
 import com.eddyizm.tempus.util.FavoriteRegistry;
 
 import java.util.Collections;
@@ -110,9 +110,9 @@ public class ArtistBottomSheetViewModel extends AndroidViewModel {
 
         artist.setStarred(new Date());
         
-        Log.d("ArtistSync", "Checking preference: " + Preferences.isStarredArtistsSyncEnabled());
+        Log.d("ArtistSync", "Checking preference: " + DownloadPreferences.isStarredArtistsSyncEnabled());
         
-        if (Preferences.isStarredArtistsSyncEnabled()) {
+        if (DownloadPreferences.isStarredArtistsSyncEnabled()) {
             Log.d("ArtistSync", "Starting artist sync for: " + artist.getName());
             
             artistRepository.getArtistAllSongs(artist.getId(), new ArtistRepository.ArtistSongsCallback() {

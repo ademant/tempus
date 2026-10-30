@@ -30,7 +30,7 @@ import com.eddyizm.tempus.util.ExternalAudioWriter;
 import com.eddyizm.tempus.util.LiveDataUtils;
 import com.eddyizm.tempus.util.MappingUtil;
 import com.eddyizm.tempus.util.MusicUtil;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.DownloadPreferences;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
@@ -102,7 +102,7 @@ public class PlaylistRowBottomSheetDialog extends BottomSheetDialogFragment {
         }));
 
         view.findViewById(R.id.download_all_row).setOnClickListener(v -> withSongs((activity, songs) -> {
-            if (Preferences.getDownloadDirectoryUri() == null) {
+            if (DownloadPreferences.getDownloadDirectoryUri() == null) {
                 DownloadUtil.getDownloadTracker(activity).download(
                         MappingUtil.mapDownloads(songs),
                         songs.stream().map(child -> {

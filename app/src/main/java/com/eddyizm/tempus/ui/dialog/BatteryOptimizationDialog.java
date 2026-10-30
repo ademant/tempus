@@ -12,7 +12,7 @@ import androidx.media3.common.util.UnstableApi;
 
 import com.eddyizm.tempus.R;
 import com.eddyizm.tempus.databinding.DialogBatteryOptimizationBinding;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.ServerPreferences;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 @OptIn(markerClass = UnstableApi.class)
@@ -27,7 +27,7 @@ public class BatteryOptimizationDialog extends DialogFragment {
                 .setView(bind.getRoot())
                 .setTitle(R.string.activity_battery_optimizations_title)
                 .setPositiveButton(R.string.battery_optimization_positive_button, (dialog, listener) -> openPowerSettings())
-                .setNeutralButton(R.string.battery_optimization_neutral_button, (dialog, listener) -> Preferences.dontAskForOptimization())
+                .setNeutralButton(R.string.battery_optimization_neutral_button, (dialog, listener) -> ServerPreferences.dontAskForOptimization())
                 .setNegativeButton(R.string.battery_optimization_negative_button, null)
                 .create();
     }

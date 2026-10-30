@@ -24,6 +24,8 @@ import com.eddyizm.tempus.ui.activity.MainActivity;
 import com.eddyizm.tempus.util.Flavors;
 import com.eddyizm.tempus.util.MusicFolderUtil;
 import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.ServerPreferences;
+import com.eddyizm.tempus.util.LibraryPreferences;
 import com.eddyizm.tempus.viewmodel.LibraryViewModel;
 import com.eddyizm.tempus.viewmodel.MainViewModel;
 import com.eddyizm.tempus.upnp.UpnpRouteSetup;
@@ -64,7 +66,7 @@ public class ToolbarFragment extends Fragment {
         inflater.inflate(R.menu.main_page_menu, menu);
         Flavors.setUpRouteButton(requireContext(), menu);
         // Read on every build. Settings replaces the host screen, whose setSupportActionBar on return rebuilds this menu.
-        if (Preferences.isUpnpEnabled()) {
+        if (ServerPreferences.isUpnpEnabled()) {
             UpnpRouteSetup.pointAtUpnpRenderers(menu);
         } else if (Flavors.routeButtonIsOnlyForUpnp(requireContext())) {
             menu.findItem(R.id.media_route_menu_item).setVisible(false);
@@ -135,7 +137,7 @@ public class ToolbarFragment extends Fragment {
         // The name lives in the server table, not in Preferences, so it takes a read of every
         // row and a match on the stored id.
         new ServerRepository().getLiveServer().observe(getViewLifecycleOwner(), servers -> {
-            String serverId = Preferences.getServerId();
+            String serverId = ServerPreferences.getServerId();
 
             serverName = null;
             if (servers != null && serverId != null) {
@@ -183,7 +185,7 @@ public class ToolbarFragment extends Fragment {
         // One library offers no choice. A filter in force has to stay visible whatever the folder
         // list says, because this is the only way to clear one from outside Settings, and the list
         // is empty for as long as the server has not answered.
-        boolean canChoose = musicFolders.size() > 1 || Preferences.getActiveMusicFolderId() != null;
+        boolean canChoose = musicFolders.size() > 1 || LibraryPreferences.getActiveMusicFolderId() != null;
         boolean visible = canChoose && isLibraryScopedScreen() && isLibraryScopedTab();
 
         // Podcast and Radio are the tabs the library never reaches, so the line carries the
@@ -202,13 +204,13 @@ public class ToolbarFragment extends Fragment {
 
         if (!visible) return;
 
-        String name = MusicFolderUtil.resolveMusicFolderName(musicFolders, Preferences.getActiveMusicFolderId());
+        String name = MusicFolderUtil.resolveMusicFolderName(musicFolders, LibraryPreferences.getActiveMusicFolderId());
         bind.toolbarMusicLibraryTextView.setText(name != null ? name : getString(R.string.settings_music_library_all));
     }
 
     private void showMusicLibraryMenu(View anchor) {
         PopupMenu popup = new PopupMenu(requireContext(), anchor);
-        String activeMusicFolderId = Preferences.getActiveMusicFolderId();
+        String activeMusicFolderId = LibraryPreferences.getActiveMusicFolderId();
 
         // Item ids are the folder's position in the list plus one, leaving zero for every library.
         // NO_CHECKED_ITEM means the stored library is not in the list, which happens when the

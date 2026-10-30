@@ -34,7 +34,7 @@ import com.eddyizm.tempus.interfaces.ClickCallback;
 import com.eddyizm.tempus.ui.activity.MainActivity;
 import com.eddyizm.tempus.ui.adapter.AlbumCatalogueAdapter;
 import com.eddyizm.tempus.util.Constants;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.LibraryPreferences;
 import com.eddyizm.tempus.util.TileSizeManager;
 import com.eddyizm.tempus.viewmodel.AlbumCatalogueViewModel;
 
@@ -59,7 +59,7 @@ public class AlbumCatalogueFragment extends Fragment implements ClickCallback {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
-        currentSortOrder = Preferences.getAlbumSortOrder();
+        currentSortOrder = LibraryPreferences.getAlbumSortOrder();
 
         initData();
     }
@@ -67,7 +67,7 @@ public class AlbumCatalogueFragment extends Fragment implements ClickCallback {
     @Override
     public void onResume() {
         super.onResume();
-        String latestSort = Preferences.getAlbumSortOrder();
+        String latestSort = LibraryPreferences.getAlbumSortOrder();
         
         if (!latestSort.equals(currentSortOrder)) {
             currentSortOrder = latestSort;
@@ -151,7 +151,7 @@ public class AlbumCatalogueFragment extends Fragment implements ClickCallback {
         bind.albumCatalogueRecyclerView.setAdapter(albumAdapter);
         albumCatalogueViewModel.getAlbumList().observe(getViewLifecycleOwner(), albums -> {
             originalAlbums = albums;
-            currentSortOrder = Preferences.getAlbumSortOrder();
+            currentSortOrder = LibraryPreferences.getAlbumSortOrder();
             applySortToAlbums(currentSortOrder);
             updateSortIndicator();
         });
@@ -272,7 +272,7 @@ public class AlbumCatalogueFragment extends Fragment implements ClickCallback {
 
             if (newSortOrder != null) {
                 currentSortOrder = newSortOrder;
-                Preferences.setAlbumSortOrder(newSortOrder);
+                LibraryPreferences.setAlbumSortOrder(newSortOrder);
                 applySortToAlbums(newSortOrder);
                 updateSortIndicator();
                 return true;

@@ -11,7 +11,7 @@ import androidx.annotation.NonNull;
 import androidx.fragment.app.DialogFragment;
 
 import com.eddyizm.tempus.R;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.PlaybackPreferences;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.slider.Slider;
@@ -61,10 +61,10 @@ public class PlaybackSpeedDialog extends DialogFragment {
         final Button[] resetButton = { null };
 
         float currentSpeed = normalizeSpeed(com.eddyizm.tempus.lan.LanRemoteSession.isActive()
-                ? com.eddyizm.tempus.lan.LanRemoteSession.current().getSpeed() : Preferences.getPlaybackSpeed());
-        float currentPitch = normalizePitch(Preferences.getPlaybackSpeedManualPitch());
-        playbackSpeedPitchSwitch.setChecked(Preferences.isPlaybackSpeedPitchEnabled());
-        playbackSpeedManualPitchSwitch.setChecked(Preferences.isPlaybackSpeedManualPitchEnabled());
+                ? com.eddyizm.tempus.lan.LanRemoteSession.current().getSpeed() : PlaybackPreferences.getPlaybackSpeed());
+        float currentPitch = normalizePitch(PlaybackPreferences.getPlaybackSpeedManualPitch());
+        playbackSpeedPitchSwitch.setChecked(PlaybackPreferences.isPlaybackSpeedPitchEnabled());
+        playbackSpeedManualPitchSwitch.setChecked(PlaybackPreferences.isPlaybackSpeedManualPitchEnabled());
         playbackSpeedSlider.setValueFrom(MIN_SLIDER_VALUE);
         playbackSpeedSlider.setValueTo(MAX_SLIDER_VALUE);
         playbackSpeedSlider.setStepSize(0.0f);
@@ -112,7 +112,7 @@ public class PlaybackSpeedDialog extends DialogFragment {
             }
 
             playbackSpeedSlider.setValue(getSliderValue(speed, MIN_SPEED, MAX_SPEED));
-            Preferences.setPlaybackSpeed(speed);
+            PlaybackPreferences.setPlaybackSpeed(speed);
             if (listener != null) {
                 listener.onSpeedSelected(speed);
             }
@@ -133,7 +133,7 @@ public class PlaybackSpeedDialog extends DialogFragment {
                 STEP_SIZE));
 
         playbackSpeedPitchSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            Preferences.setPlaybackSpeedPitchEnabled(isChecked);
+            PlaybackPreferences.setPlaybackSpeedPitchEnabled(isChecked);
             updateManualPitchVisibility(
                     playbackSpeedManualPitchSwitch,
                     playbackSpeedManualPitchContainer,
@@ -157,7 +157,7 @@ public class PlaybackSpeedDialog extends DialogFragment {
         });
 
         playbackSpeedManualPitchSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            Preferences.setPlaybackSpeedManualPitchEnabled(isChecked);
+            PlaybackPreferences.setPlaybackSpeedManualPitchEnabled(isChecked);
             updateManualPitchVisibility(
                     playbackSpeedManualPitchSwitch,
                     playbackSpeedManualPitchContainer,
@@ -201,7 +201,7 @@ public class PlaybackSpeedDialog extends DialogFragment {
             }
 
             playbackSpeedManualPitchSlider.setValue(getSliderValue(pitch, MIN_PITCH, MAX_PITCH));
-            Preferences.setPlaybackSpeedManualPitch(pitch);
+            PlaybackPreferences.setPlaybackSpeedManualPitch(pitch);
             if (listener != null) {
                 listener.onSpeedSelected(normalizeSpeed(getPlaybackValue(
                         playbackSpeedSlider.getValue(),
@@ -265,8 +265,8 @@ public class PlaybackSpeedDialog extends DialogFragment {
                 isResetting[0] = false;
                 updateSpeedLabel(playbackSpeedValueTextView, DEFAULT_SPEED);
                 updatePitchLabel(playbackSpeedManualPitchValueTextView, DEFAULT_PITCH);
-                Preferences.setPlaybackSpeed(DEFAULT_SPEED);
-                Preferences.setPlaybackSpeedManualPitch(DEFAULT_PITCH);
+                PlaybackPreferences.setPlaybackSpeed(DEFAULT_SPEED);
+                PlaybackPreferences.setPlaybackSpeedManualPitch(DEFAULT_PITCH);
                 updateAdjustmentButtonState(
                         playbackSpeedDecreaseButton,
                         playbackSpeedIncreaseButton,
@@ -345,7 +345,7 @@ public class PlaybackSpeedDialog extends DialogFragment {
         slider.setValue(getSliderValue(speed, MIN_SPEED, MAX_SPEED));
         updateSpeedLabel(textView, speed);
         updateAdjustmentButtonState(decreaseButton, increaseButton, speed, MIN_SPEED, MAX_SPEED);
-        Preferences.setPlaybackSpeed(speed);
+        PlaybackPreferences.setPlaybackSpeed(speed);
         if (listener != null) {
             listener.onSpeedSelected(speed);
         }
@@ -363,7 +363,7 @@ public class PlaybackSpeedDialog extends DialogFragment {
         manualPitchSlider.setValue(getSliderValue(pitch, MIN_PITCH, MAX_PITCH));
         updatePitchLabel(textView, pitch);
         updateAdjustmentButtonState(decreaseButton, increaseButton, pitch, MIN_PITCH, MAX_PITCH);
-        Preferences.setPlaybackSpeedManualPitch(pitch);
+        PlaybackPreferences.setPlaybackSpeedManualPitch(pitch);
         if (listener != null) {
             listener.onSpeedSelected(normalizeSpeed(getPlaybackValue(
                     playbackSpeedSlider.getValue(),

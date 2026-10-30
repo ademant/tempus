@@ -9,7 +9,7 @@ import androidx.core.view.WindowInsetsCompat
 import com.eddyizm.tempus.R
 import com.eddyizm.tempus.helper.ThemeHelper
 import com.eddyizm.tempus.navigation.setUpEdgeToEdge
-import com.eddyizm.tempus.util.Preferences
+import com.eddyizm.tempus.util.ServerPreferences
 import com.google.android.material.appbar.MaterialToolbar
 
 /** Hosts remote-player preferences using the same toolbar and rows as Settings. */
@@ -19,7 +19,7 @@ class LanPlaybackActivity : AppCompatActivity() {
         setUpEdgeToEdge()
         super.onCreate(savedInstanceState)
         // Reachable from a stale notification or the picker's pair button; nothing to show while the switch is off.
-        if (!Preferences.isLanRemoteEnabled()) {
+        if (!ServerPreferences.isLanRemoteEnabled()) {
             finish()
             return
         }

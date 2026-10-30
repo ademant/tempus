@@ -8,7 +8,7 @@ import androidx.fragment.app.DialogFragment;
 
 import com.eddyizm.tempus.R;
 import com.eddyizm.tempus.databinding.DialogConnectionAlertBinding;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.StreamingPreferences;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.util.Objects;
@@ -25,7 +25,7 @@ public class ConnectionAlertDialog extends DialogFragment {
                 .setPositiveButton(R.string.connection_alert_dialog_positive_button, (dialog, id) -> dialog.cancel())
                 .setNegativeButton(R.string.connection_alert_dialog_negative_button, (dialog, id) -> dialog.cancel());
 
-        if (!Preferences.isDataSavingMode()) {
+        if (!StreamingPreferences.isDataSavingMode()) {
             builder.setNeutralButton(R.string.connection_alert_dialog_neutral_button, (dialog, id) -> {
             });
         }
@@ -44,7 +44,7 @@ public class ConnectionAlertDialog extends DialogFragment {
         androidx.appcompat.app.AlertDialog alertDialog = (androidx.appcompat.app.AlertDialog) Objects.requireNonNull(getDialog());
 
         alertDialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
-            Preferences.setDataSavingMode(true);
+            StreamingPreferences.setDataSavingMode(true);
             Objects.requireNonNull(getDialog()).dismiss();
         });
     }

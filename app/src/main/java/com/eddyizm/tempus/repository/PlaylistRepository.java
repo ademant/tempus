@@ -28,7 +28,7 @@ import com.eddyizm.tempus.subsonic.models.ResponseStatus;
 import com.eddyizm.tempus.subsonic.models.SubsonicResponse;
 import com.eddyizm.tempus.util.DownloadRepair;
 import com.eddyizm.tempus.util.DownloadUtil;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.ServerPreferences;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -58,7 +58,7 @@ public class PlaylistRepository {
             // Must delete dependent records first to avoid foreign key constraint violations
             playlistSongDao.deleteForPlaylist(id);
             pinnedPlaylistDao.unpin(id);
-            String server = Preferences.getServer();
+            String server = ServerPreferences.getServer();
             if (server != null) syncedPlaylistDao.remove(id, server);
             playlistDao.deleteById(id);
             
@@ -119,7 +119,7 @@ public class PlaylistRepository {
                     remoteIds.add(remote.getId());
                 }
 
-                String server = Preferences.getServer();
+                String server = ServerPreferences.getServer();
                 for (Playlist cached : cachedPlaylists) {
                     if (!remoteIds.contains(cached.getId())) {
                         playlistSongDao.deleteForPlaylist(cached.getId());
@@ -549,14 +549,14 @@ public class PlaylistRepository {
 
     // Keyed by the server URL, not the server id preference, which only one of the two login screens writes.
     public LiveData<Boolean> isKeptSynced(String id) {
-        String server = Preferences.getServer();
+        String server = ServerPreferences.getServer();
         if (server == null) return new MutableLiveData<>(false);
         return syncedPlaylistDao.isSynced(id, server);
     }
 
     /** Returns false, and writes nothing, when there is no server address to key the flag by. */
     public boolean setKeptSynced(String id, boolean kept) {
-        String server = Preferences.getServer();
+        String server = ServerPreferences.getServer();
         if (server == null) {
             android.util.Log.w("PlaylistRepository", "No server address in use, keep synced not saved for " + id);
             return false;
@@ -575,7 +575,7 @@ public class PlaylistRepository {
     // Never from the cache, a stale copy would miss exactly the tracks this exists to catch, so offline this does nothing.
     @OptIn(markerClass = UnstableApi.class)
     public void syncKeptPlaylists(Context context) {
-        String server = Preferences.getServer();
+        String server = ServerPreferences.getServer();
         if (server == null || !DownloadRepair.isUserAuthenticated()) return;
         // Once per server per app open, and a failed fetch hands the gate back so an offline open does not spend it.
         if (server.equals(keptSyncRanFor)) return;
@@ -624,7 +624,7 @@ public class PlaylistRepository {
                     @Override
                     public void onResponse(@NonNull Call<ApiResponse> call, @NonNull Response<ApiResponse> response) {
                         if (isAccepted(response)) {
-                            String server = Preferences.getServer();
+                            String server = ServerPreferences.getServer();
                             new Thread(() -> {
                                 playlistSongDao.deleteForPlaylist(playlistId);
                                 if (server != null) syncedPlaylistDao.remove(playlistId, server);

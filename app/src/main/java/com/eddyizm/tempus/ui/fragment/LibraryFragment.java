@@ -38,7 +38,7 @@ import com.eddyizm.tempus.ui.adapter.GenreAdapter;
 import com.eddyizm.tempus.ui.adapter.MusicFolderAdapter;
 import com.eddyizm.tempus.ui.adapter.PlaylistHorizontalAdapter;
 import com.eddyizm.tempus.util.Constants;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.UiPreferences;
 import com.eddyizm.tempus.viewmodel.LibraryViewModel;
 import com.eddyizm.tempus.viewmodel.MainViewModel;
 import com.google.android.material.appbar.MaterialToolbar;
@@ -176,7 +176,7 @@ public class LibraryFragment extends Fragment implements ClickCallback {
     }
 
     private void initMusicFolderView() {
-        if (!Preferences.isMusicDirectorySectionVisible()) {
+        if (!UiPreferences.isMusicDirectorySectionVisible()) {
             bind.libraryMusicFolderSector.setVisibility(View.GONE);
             return;
         }

@@ -27,7 +27,7 @@ class DynamicMediaSourceFactory(
         val mediaType = mediaItem.mediaMetadata.extras?.getString("type", "")
         val isRadio = mediaType == Constants.MEDIA_TYPE_RADIO || mediaItem.mediaId.startsWith("ir-")
 
-        val streamingCacheSize = Preferences.getStreamingCacheSize()
+        val streamingCacheSize = StreamingPreferences.getStreamingCacheSize()
         val bypassCache = isRadio
 
         val useUpstream = when {

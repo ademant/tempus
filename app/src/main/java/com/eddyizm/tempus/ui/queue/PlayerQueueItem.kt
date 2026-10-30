@@ -59,7 +59,7 @@ import com.eddyizm.tempus.util.DownloadUtil
 import com.eddyizm.tempus.util.ExternalAudioReader
 import com.eddyizm.tempus.util.FavoriteRegistry
 import com.eddyizm.tempus.util.MusicUtil
-import com.eddyizm.tempus.util.Preferences
+import com.eddyizm.tempus.util.DownloadPreferences
 import com.eddyizm.tempus.util.RadioCoverArtDownloader
 
 private class StateHolder<T>(var value: T? = null)
@@ -96,7 +96,7 @@ fun PlayerQueueItem(
     val currentIsCurrent by rememberUpdatedState(isCurrent)
     val currentCanDismiss by rememberUpdatedState(canDismiss)
 
-    val downloadDirUri = remember { Preferences.getDownloadDirectoryUri() }
+    val downloadDirUri = remember { DownloadPreferences.getDownloadDirectoryUri() }
     val downloaderManager = remember(context) { DownloadUtil.getDownloadTracker(context) }
 
     val isDownloaded = remember(item.song.id, downloadedIds, externalRefreshTrigger) {

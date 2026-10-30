@@ -35,7 +35,7 @@ import com.eddyizm.tempus.interfaces.ClickCallback;
 import com.eddyizm.tempus.ui.activity.MainActivity;
 import com.eddyizm.tempus.ui.adapter.ArtistCatalogueAdapter;
 import com.eddyizm.tempus.util.Constants;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.LibraryPreferences;
 import com.eddyizm.tempus.util.TileSizeManager;
 import com.eddyizm.tempus.viewmodel.ArtistCatalogueViewModel;
 import com.eddyizm.tempus.subsonic.models.ArtistID3;
@@ -128,7 +128,7 @@ public class ArtistCatalogueFragment extends Fragment implements ClickCallback {
         bind.artistCatalogueRecyclerView.setAdapter(artistAdapter);
         artistCatalogueViewModel.getArtistList().observe(getViewLifecycleOwner(), artistList -> {
             artistAdapter.setItems(artistList);
-            artistAdapter.sort(Preferences.getArtistSortOrder());
+            artistAdapter.sort(LibraryPreferences.getArtistSortOrder());
         });
 
         bind.artistCatalogueRecyclerView.setOnTouchListener((v, event) -> {

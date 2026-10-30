@@ -32,7 +32,7 @@ import com.eddyizm.tempus.model.Server;
 import com.eddyizm.tempus.repository.PlaylistRepository;
 import com.eddyizm.tempus.repository.SystemRepository;
 import com.eddyizm.tempus.ui.activity.MainActivity;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.ServerPreferences;
 import com.eddyizm.tempus.viewmodel.LoginViewModel;
 
 @UnstableApi
@@ -150,14 +150,14 @@ public class LoginFragment extends Fragment implements ClickCallback {
     @Override
     public void onServerClick(Bundle bundle) {
         Server server = bundle.getParcelable("server_object");
-        Preferences.setAllowUnencryptedServer(server.getAllowUnencrypted());
+        ServerPreferences.setAllowUnencryptedServer(server.getAllowUnencrypted());
         saveServerPreference(server.getServerId(), server.getAddress(), server.getLocalAddress(), server.getUsername(), server.getPassword(), server.isLowSecurity(), server.getClientCert(), server.getCustomHeaders());
 
         SystemRepository systemRepository = new SystemRepository();
         systemRepository.checkUserCredential(new SystemCallback() {
             @Override
             public void onError(Exception exception) {
-                Preferences.switchInUseServerAddress();
+                ServerPreferences.switchInUseServerAddress();
                 resetServerPreference();
 
                 Context context = getContext();
@@ -178,33 +178,33 @@ public class LoginFragment extends Fragment implements ClickCallback {
         // Written only when the stored address belongs to another server. Tapping the same one
         // again has to keep the flip onError made, which is how a second attempt reaches the local
         // address. The server id cannot be the test, because onError clears it.
-        String inUseAddress = Preferences.getInUseServerAddress();
+        String inUseAddress = ServerPreferences.getInUseServerAddress();
         boolean addressIsThisServers = java.util.Objects.equals(inUseAddress, server)
                 || java.util.Objects.equals(inUseAddress, localAddress);
 
-        Preferences.setServerId(serverId);
-        Preferences.setServer(server);
-        Preferences.setLocalAddress(localAddress);
-        if (!addressIsThisServers) Preferences.setInUseServerAddress(server);
-        Preferences.setUser(user);
-        Preferences.setPassword(password);
-        Preferences.setLowSecurity(isLowSecurity);
-        Preferences.setClientCert(clientCert);
-        Preferences.setCustomHeaders(customHeaders);
+        ServerPreferences.setServerId(serverId);
+        ServerPreferences.setServer(server);
+        ServerPreferences.setLocalAddress(localAddress);
+        if (!addressIsThisServers) ServerPreferences.setInUseServerAddress(server);
+        ServerPreferences.setUser(user);
+        ServerPreferences.setPassword(password);
+        ServerPreferences.setLowSecurity(isLowSecurity);
+        ServerPreferences.setClientCert(clientCert);
+        ServerPreferences.setCustomHeaders(customHeaders);
 
         App.getSubsonicClientInstance(true);
     }
 
     private void resetServerPreference() {
-        Preferences.setServerId(null);
-        Preferences.setServer(null);
-        Preferences.setUser(null);
-        Preferences.setPassword(null);
-        Preferences.setToken(null);
-        Preferences.setSalt(null);
-        Preferences.setLowSecurity(false);
-        Preferences.setClientCert(null);
-        Preferences.setCustomHeaders(null);
+        ServerPreferences.setServerId(null);
+        ServerPreferences.setServer(null);
+        ServerPreferences.setUser(null);
+        ServerPreferences.setPassword(null);
+        ServerPreferences.setToken(null);
+        ServerPreferences.setSalt(null);
+        ServerPreferences.setLowSecurity(false);
+        ServerPreferences.setClientCert(null);
+        ServerPreferences.setCustomHeaders(null);
 
         App.getSubsonicClientInstance(true);
     }

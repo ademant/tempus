@@ -15,7 +15,7 @@ import com.eddyizm.tempus.repository.QueueRepository
 import com.eddyizm.tempus.service.MediaService
 import com.eddyizm.tempus.service.MediaManager
 import com.eddyizm.tempus.util.MappingUtil
-import com.eddyizm.tempus.util.Preferences
+import com.eddyizm.tempus.util.ServerPreferences
 import org.json.JSONObject
 import org.json.JSONArray
 import androidx.media3.common.Player
@@ -86,7 +86,7 @@ class LanReceiverService : Service() {
         super.onCreate()
         error = null
         LanDiagnostics.record("Receiver starting")
-        serverIdentity = Preferences.getServer()
+        serverIdentity = ServerPreferences.getServer()
         val notifications = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= 26) notifications.createNotificationChannel(
             NotificationChannel("lan_receiver", getString(R.string.lan_title), NotificationManager.IMPORTANCE_LOW))
@@ -98,7 +98,7 @@ class LanReceiverService : Service() {
             .addAction(0, getString(R.string.lan_disable), stop).build())
         // Stopped before any socket or mDNS advertisement exists while the LAN remote switch is off.
         // startForeground still had to run first, or the system kills the app for a missed foreground start.
-        if (!Preferences.isLanRemoteEnabled()) {
+        if (!ServerPreferences.isLanRemoteEnabled()) {
             alive = false
             stopSelf()
             return
@@ -161,7 +161,7 @@ class LanReceiverService : Service() {
                 LanDiagnostics.record("Receiver pairing code sent; awaiting approval")
                 return
             }
-            require(Preferences.getServer() == serverIdentity && !serverIdentity.isNullOrEmpty())
+            require(ServerPreferences.getServer() == serverIdentity && !serverIdentity.isNullOrEmpty())
             if (command == "watch") {
                 require(watchers.tryAcquire())
                 try { watch(socket, fingerprint) } finally { watchers.release() }
@@ -276,7 +276,7 @@ class LanReceiverService : Service() {
         try {
             while (alive && !Thread.currentThread().isInterrupted) {
                 val state = onMain {
-                    require(alive && trusted(this).contains(fingerprint) && Preferences.getServer() == serverIdentity)
+                    require(alive && trusted(this).contains(fingerprint) && ServerPreferences.getServer() == serverIdentity)
                     snapshot(browserFuture.get())
                 }
                 LanWire.write(socket, state)
@@ -300,7 +300,7 @@ class LanReceiverService : Service() {
         val deadline = SystemClock.elapsedRealtime() + 90000
         val songs = (0 until ids.length()).map { i ->
             require(alive && !Thread.currentThread().isInterrupted && SystemClock.elapsedRealtime() < deadline)
-            require(trusted(this).contains(fingerprint) && Preferences.getServer() == serverIdentity)
+            require(trusted(this).contains(fingerprint) && ServerPreferences.getServer() == serverIdentity)
             val id = ids.getString(i)
             require(id.length in 1..512)
             val call = App.getSubsonicClientInstance(false).browsingClient.getSong(id)
@@ -311,7 +311,7 @@ class LanReceiverService : Service() {
         }
         val items = songs.map { MappingUtil.mapMediaItem(it) }
         onMain {
-            require(alive && trusted(this).contains(fingerprint) && Preferences.getServer() == serverIdentity)
+            require(alive && trusted(this).contains(fingerprint) && ServerPreferences.getServer() == serverIdentity)
             val player = browserFuture.get()
             player.setMediaItems(items, index, position)
             player.prepare()
@@ -328,7 +328,7 @@ class LanReceiverService : Service() {
         require(request.getString("server") == LanWire.fingerprint(serverIdentity!!.trimEnd('/').toByteArray()))
         val action = request.getString("action")
         val authorized = {
-            require(alive && trusted(this).contains(fingerprint) && Preferences.getServer() == serverIdentity)
+            require(alive && trusted(this).contains(fingerprint) && ServerPreferences.getServer() == serverIdentity)
         }
         val added = if (action in setOf("replace", "append", "next")) {
             val json = request.getJSONArray("ids")

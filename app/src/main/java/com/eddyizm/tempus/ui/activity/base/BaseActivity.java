@@ -23,7 +23,8 @@ import com.eddyizm.tempus.service.DownloaderService;
 import com.eddyizm.tempus.service.MediaService;
 import com.eddyizm.tempus.ui.dialog.BatteryOptimizationDialog;
 import com.eddyizm.tempus.util.Flavors;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.UiPreferences;
+import com.eddyizm.tempus.util.ServerPreferences;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.ArrayList;
@@ -73,7 +74,7 @@ public class BaseActivity extends AppCompatActivity {
     }
 
     private void checkBatteryOptimization() {
-        if (detectBatteryOptimization() && Preferences.askForOptimization()) {
+        if (detectBatteryOptimization() && ServerPreferences.askForOptimization()) {
             showBatteryOptimizationDialog();
         }
     }
@@ -112,7 +113,7 @@ public class BaseActivity extends AppCompatActivity {
     }
 
     private void checkAlwaysOnDisplay() {
-        if (Preferences.isDisplayAlwaysOn()) {
+        if (UiPreferences.isDisplayAlwaysOn()) {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         }
     }
@@ -149,11 +150,11 @@ public class BaseActivity extends AppCompatActivity {
     }
 
     private String generateThemeSignature() {
-        String accent = (Preferences.isDynamicColorAccent())
+        String accent = (UiPreferences.isDynamicColorAccent())
                 ? "DYNAMIC"
-                : Preferences.getColorAccent();
-        String theme = Preferences.getTheme();
-        String black = String.valueOf(Preferences.isDarkThemeBlack());
+                : UiPreferences.getColorAccent();
+        String theme = UiPreferences.getTheme();
+        String black = String.valueOf(UiPreferences.isDarkThemeBlack());
         return theme + "|" + black + "|" + accent;
     }
 }

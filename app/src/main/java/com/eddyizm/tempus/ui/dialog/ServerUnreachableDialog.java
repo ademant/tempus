@@ -12,7 +12,7 @@ import androidx.media3.common.util.UnstableApi;
 import com.eddyizm.tempus.R;
 import com.eddyizm.tempus.databinding.DialogServerUnreachableBinding;
 import com.eddyizm.tempus.ui.activity.MainActivity;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.ServerPreferences;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.util.Objects;
@@ -56,7 +56,7 @@ public class ServerUnreachableDialog extends DialogFragment {
         });
 
         alertDialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            Preferences.setServerUnreachableDatetime();
+            ServerPreferences.setServerUnreachableDatetime();
             alertDialog.dismiss();
         });
     }

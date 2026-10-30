@@ -13,7 +13,7 @@ import androidx.media3.common.util.UnstableApi;
 import com.eddyizm.tempus.repository.PlaylistRepository;
 import com.eddyizm.tempus.subsonic.models.Playlist;
 import com.eddyizm.tempus.util.Constants;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.LibraryPreferences;
 
 import java.util.List;
 
@@ -29,7 +29,7 @@ public class PlaylistCatalogueViewModel extends AndroidViewModel {
 
     public PlaylistCatalogueViewModel(@NonNull Application application) {
         super(application);
-        String currentPref = Preferences.getHomeSortPlaylists();
+        String currentPref = LibraryPreferences.getHomeSortPlaylists();
         sortOrder.setValue(currentPref);
         playlistRepository = new PlaylistRepository();
     }
@@ -48,7 +48,7 @@ public class PlaylistCatalogueViewModel extends AndroidViewModel {
 
     public void setSortOrder(String order) {
         android.util.Log.d("TempusLog", "ViewModel setSortOrder called with: " + order);
-        Preferences.setHomeSortPlaylists(order);
+        LibraryPreferences.setHomeSortPlaylists(order);
         sortOrder.setValue(order);
     }
 

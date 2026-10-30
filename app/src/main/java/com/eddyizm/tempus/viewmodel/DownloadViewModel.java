@@ -16,7 +16,7 @@ import com.eddyizm.tempus.model.DownloadStack;
 import com.eddyizm.tempus.repository.DownloadRepository;
 import com.eddyizm.tempus.subsonic.models.Child;
 import com.eddyizm.tempus.util.ExternalAudioReader;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.DownloadPreferences;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,7 +36,7 @@ public class DownloadViewModel extends AndroidViewModel {
 
         downloadRepository = new DownloadRepository();
 
-        initViewStack(new DownloadStack(Preferences.getDefaultDownloadViewType(), null));
+        initViewStack(new DownloadStack(DownloadPreferences.getDefaultDownloadViewType(), null));
     }
 
     public LiveData<List<Child>> getDownloadedTracks(LifecycleOwner owner) {
@@ -72,7 +72,7 @@ public class DownloadViewModel extends AndroidViewModel {
 
     public void refreshExternalDownloads() {
         new Thread(() -> {
-            String directoryUri = Preferences.getDownloadDirectoryUri();
+            String directoryUri = DownloadPreferences.getDownloadDirectoryUri();
             if (directoryUri == null) {
                 refreshResult.postValue(-1);
                 return;

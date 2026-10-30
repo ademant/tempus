@@ -5,14 +5,15 @@ import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 
 import java.util.List;
+import com.eddyizm.tempus.util.ServerPreferences;
 
 public class OpenSubsonicExtensionsUtil {
     private static List<OpenSubsonicExtension> getOpenSubsonicExtensions() {
         List<OpenSubsonicExtension> extensions = null;
 
-        if (Preferences.isOpenSubsonic() && Preferences.getOpenSubsonicExtensions() != null) {
+        if (ServerPreferences.isOpenSubsonic() && ServerPreferences.getOpenSubsonicExtensions() != null) {
             extensions = new Gson().fromJson(
-                    Preferences.getOpenSubsonicExtensions(),
+                    ServerPreferences.getOpenSubsonicExtensions(),
                     new TypeToken<List<OpenSubsonicExtension>>() {
                     }.getType()
             );

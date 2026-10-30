@@ -18,7 +18,7 @@ import com.eddyizm.tempus.databinding.DialogPlaylistEditorBinding;
 import com.eddyizm.tempus.interfaces.PlaylistCallback;
 import com.eddyizm.tempus.repository.PlaylistRepository;
 import com.eddyizm.tempus.util.Constants;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.ServerPreferences;
 import com.eddyizm.tempus.viewmodel.PlaylistEditorViewModel;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
@@ -154,7 +154,7 @@ public class PlaylistEditorDialog extends DialogFragment {
             });
         });
 
-        bind.playlistShareButton.setVisibility(Preferences.isSharingEnabled() ? View.VISIBLE : View.GONE);
+        bind.playlistShareButton.setVisibility(ServerPreferences.isSharingEnabled() ? View.VISIBLE : View.GONE);
     }
 
     private boolean validateInput() {

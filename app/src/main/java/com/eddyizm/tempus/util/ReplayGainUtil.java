@@ -29,6 +29,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import com.eddyizm.tempus.util.PlaybackPreferences;
 
 @OptIn(markerClass = UnstableApi.class)
 public class ReplayGainUtil {
@@ -67,7 +68,7 @@ public class ReplayGainUtil {
     }
 
     public static void prefetchQueueGains(Player player) {
-        if (Objects.equals(Preferences.getReplayGainMode(), "disabled")) return;
+        if (Objects.equals(PlaybackPreferences.getReplayGainMode(), "disabled")) return;
 
         playerRef = new WeakReference<>(player);
 
@@ -503,10 +504,10 @@ public class ReplayGainUtil {
     }
 
     private static float resolveGain(Player player, List<ReplayGain> gains) {
-        if (Objects.equals(Preferences.getReplayGainMode(), "disabled")
+        if (Objects.equals(PlaybackPreferences.getReplayGainMode(), "disabled")
                 || gains == null || gains.isEmpty()) return 0f;
 
-        String mode = Objects.toString(Preferences.getReplayGainMode(), "");
+        String mode = Objects.toString(PlaybackPreferences.getReplayGainMode(), "");
         switch (mode) {
             case "track": return resolveTrackGain(gains);
             case "album": return resolveAlbumGain(gains);
@@ -517,10 +518,10 @@ public class ReplayGainUtil {
     }
 
     private static float resolveGainForNextTrack(Player player, List<ReplayGain> gains) {
-        if (Objects.equals(Preferences.getReplayGainMode(), "disabled")
+        if (Objects.equals(PlaybackPreferences.getReplayGainMode(), "disabled")
                 || gains == null || gains.isEmpty()) return 0f;
 
-        String mode = Objects.toString(Preferences.getReplayGainMode(), "");
+        String mode = Objects.toString(PlaybackPreferences.getReplayGainMode(), "");
         switch (mode) {
             case "track": return resolveTrackGain(gains);
             case "album": return resolveAlbumGain(gains);
@@ -544,22 +545,22 @@ public class ReplayGainUtil {
     }
 
     private static float resolvePeak(Player player, List<ReplayGain> gains) {
-        if (Objects.equals(Preferences.getReplayGainMode(), "disabled")
+        if (Objects.equals(PlaybackPreferences.getReplayGainMode(), "disabled")
                 || gains == null || gains.isEmpty()) return 0f;
 
-        boolean useAlbum = Objects.equals(Preferences.getReplayGainMode(), "album")
-                || (Objects.equals(Preferences.getReplayGainMode(), "auto")
+        boolean useAlbum = Objects.equals(PlaybackPreferences.getReplayGainMode(), "album")
+                || (Objects.equals(PlaybackPreferences.getReplayGainMode(), "auto")
                     && areTracksConsecutive(player));
 
         return resolveTrackOrAlbumPeak(gains, useAlbum);
     }
 
     private static float resolvePeakForNextTrack(Player player, List<ReplayGain> gains) {
-        if (Objects.equals(Preferences.getReplayGainMode(), "disabled")
+        if (Objects.equals(PlaybackPreferences.getReplayGainMode(), "disabled")
                 || gains == null || gains.isEmpty()) return 0f;
 
-        boolean useAlbum = Objects.equals(Preferences.getReplayGainMode(), "album")
-                || (Objects.equals(Preferences.getReplayGainMode(), "auto")
+        boolean useAlbum = Objects.equals(PlaybackPreferences.getReplayGainMode(), "album")
+                || (Objects.equals(PlaybackPreferences.getReplayGainMode(), "auto")
                     && areCurrentAndNextConsecutive(player));
 
         return resolveTrackOrAlbumPeak(gains, useAlbum);
@@ -605,10 +606,10 @@ public class ReplayGainUtil {
     // Total gain computation (preamp + clipping prevention)
 
     private static float computeTotalGain(float gain, float peak) {
-        float preamp    = Preferences.getLoudnessPreamp();
+        float preamp    = PlaybackPreferences.getLoudnessPreamp();
         float totalGain = gain + preamp;
 
-        if (Preferences.isReplayGainPreventClipping() && peak > 0f) {
+        if (PlaybackPreferences.isReplayGainPreventClipping() && peak > 0f) {
             float maxGainForPeak = -(float) (20.0 * Math.log10(peak));
             if (totalGain > maxGainForPeak) totalGain = maxGainForPeak;
         }

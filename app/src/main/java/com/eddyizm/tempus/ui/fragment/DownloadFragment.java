@@ -32,7 +32,7 @@ import com.eddyizm.tempus.ui.activity.MainActivity;
 import com.eddyizm.tempus.ui.adapter.DownloadHorizontalAdapter;
 import com.eddyizm.tempus.util.Constants;
 import com.eddyizm.tempus.util.ExternalAudioReader;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.DownloadPreferences;
 import com.eddyizm.tempus.viewmodel.DownloadViewModel;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -272,7 +272,7 @@ public class DownloadFragment extends Fragment implements ClickCallback {
 
     private boolean setDownloadViewModel(String downloadType) {
         downloadViewModel.initViewStack(new DownloadStack(downloadType, null));
-        Preferences.setDefaultDownloadViewType(downloadType);
+        DownloadPreferences.setDefaultDownloadViewType(downloadType);
         return true;
     }
 
@@ -331,7 +331,7 @@ public class DownloadFragment extends Fragment implements ClickCallback {
                 uri,
                 Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
         );
-        Preferences.setDownloadDirectoryUri(uri.toString());
+        DownloadPreferences.setDownloadDirectoryUri(uri.toString());
         ExternalAudioReader.refreshCache();
         Toast.makeText(requireContext(), "Download directory set", Toast.LENGTH_SHORT).show();
     }

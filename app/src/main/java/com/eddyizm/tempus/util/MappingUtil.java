@@ -33,6 +33,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import com.eddyizm.tempus.util.DownloadPreferences;
 
 @OptIn(markerClass = UnstableApi.class)
 public class MappingUtil {
@@ -279,11 +280,11 @@ public class MappingUtil {
                 .setRequestMetadata(
                         new MediaItem.RequestMetadata.Builder()
                                 .setExtras(bundle)
-                                .setMediaUri(Preferences.preferTranscodedDownload() ? MusicUtil.getTranscodedDownloadUri(media.getId()) : MusicUtil.getDownloadUri(media.getId()))
+                                .setMediaUri(DownloadPreferences.preferTranscodedDownload() ? MusicUtil.getTranscodedDownloadUri(media.getId()) : MusicUtil.getDownloadUri(media.getId()))
                                 .build()
                 )
                 .setMimeType(MimeTypes.BASE_TYPE_AUDIO)
-                .setUri(Preferences.preferTranscodedDownload() ? MusicUtil.getTranscodedDownloadUri(media.getId()) : MusicUtil.getDownloadUri(media.getId()))
+                .setUri(DownloadPreferences.preferTranscodedDownload() ? MusicUtil.getTranscodedDownloadUri(media.getId()) : MusicUtil.getDownloadUri(media.getId()))
                 .build();
     }
 
@@ -524,7 +525,7 @@ public class MappingUtil {
         }
 
         // Legacy check for external directory, i think this was broken/buggy
-        if (Preferences.getDownloadDirectoryUri() != null) {
+        if (DownloadPreferences.getDownloadDirectoryUri() != null) {
             Uri local = ExternalAudioReader.getUri(media);
             if (local != null) return local;
         }
@@ -534,7 +535,7 @@ public class MappingUtil {
     }
 
     private static Uri getUri(PodcastEpisode podcastEpisode) {
-        if (Preferences.getDownloadDirectoryUri() != null) {
+        if (DownloadPreferences.getDownloadDirectoryUri() != null) {
             Uri local = ExternalAudioReader.getUri(podcastEpisode);
             return local != null ? local : MusicUtil.getStreamUri(podcastEpisode.getStreamId());
         }

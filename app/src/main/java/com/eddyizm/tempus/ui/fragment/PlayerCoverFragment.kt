@@ -36,7 +36,7 @@ import com.eddyizm.tempus.util.Constants
 import com.eddyizm.tempus.util.DownloadUtil
 import com.eddyizm.tempus.util.ExternalAudioWriter
 import com.eddyizm.tempus.util.MappingUtil
-import com.eddyizm.tempus.util.Preferences
+import com.eddyizm.tempus.util.DownloadPreferences
 import com.eddyizm.tempus.viewmodel.PlayerBottomSheetViewModel
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
@@ -194,7 +194,7 @@ class PlayerCoverFragment : Fragment() {
             val binding = bind ?: return@observe
             if (song != null) {
                 binding.innerButtonTopLeft.setOnClickListener {
-                    if (Preferences.getDownloadDirectoryUri() == null) {
+                    if (DownloadPreferences.getDownloadDirectoryUri() == null) {
                         DownloadUtil.getDownloadTracker(requireContext()).download(
                             MappingUtil.mapDownload(song),
                             Download(song)

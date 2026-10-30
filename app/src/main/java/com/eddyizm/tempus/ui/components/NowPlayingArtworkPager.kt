@@ -34,7 +34,7 @@ import com.bumptech.glide.signature.ObjectKey
 import com.eddyizm.tempus.R
 import com.eddyizm.tempus.glide.CustomGlideRequest
 import com.eddyizm.tempus.subsonic.models.Child
-import com.eddyizm.tempus.util.Preferences
+import com.eddyizm.tempus.util.UiPreferences
 import com.eddyizm.tempus.util.RadioCoverArtDownloader
 import kotlin.math.absoluteValue
 
@@ -94,8 +94,8 @@ fun NowPlayingArtworkPager(
         }
     }
 
-    val cornerRadius = if (Preferences.isCornerRoundingEnabled()) {
-        Preferences.getRoundedCornerSize().dp
+    val cornerRadius = if (UiPreferences.isCornerRoundingEnabled()) {
+        UiPreferences.getRoundedCornerSize().dp
     } else {
         0.dp
     }
@@ -172,7 +172,7 @@ private fun SongArtwork(
     val dataSaving = rememberDataSavingMode()
 
     GlideImage(
-        model = CustomGlideRequest.createUrl(coverArtId, Preferences.getImageSize()),
+        model = CustomGlideRequest.createUrl(coverArtId, UiPreferences.getImageSize()),
         contentDescription = title,
         modifier = Modifier.fillMaxSize(),
         contentScale = ContentScale.Crop,

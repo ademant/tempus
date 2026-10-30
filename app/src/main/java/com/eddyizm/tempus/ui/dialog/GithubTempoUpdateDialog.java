@@ -12,7 +12,7 @@ import androidx.fragment.app.DialogFragment;
 import com.eddyizm.tempus.R;
 import com.eddyizm.tempus.databinding.DialogGithubTempoUpdateBinding;
 import com.eddyizm.tempus.github.models.LatestRelease;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.UiPreferences;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.util.Objects;
@@ -55,7 +55,7 @@ public class GithubTempoUpdateDialog extends DialogFragment {
         });
 
         alertDialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener(v -> {
-            Preferences.setTempusUpdateReminder();
+            UiPreferences.setTempusUpdateReminder();
             Objects.requireNonNull(getDialog()).dismiss();
         });
 

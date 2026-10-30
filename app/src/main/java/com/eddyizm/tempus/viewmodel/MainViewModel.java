@@ -13,6 +13,7 @@ import com.eddyizm.tempus.repository.SystemRepository;
 import com.eddyizm.tempus.subsonic.models.OpenSubsonicExtension;
 import com.eddyizm.tempus.subsonic.models.SubsonicResponse;
 import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.LibraryPreferences;
 
 import java.util.List;
 
@@ -22,7 +23,7 @@ public class MainViewModel extends AndroidViewModel {
     private final SystemRepository systemRepository;
 
     private final MutableLiveData<String> activeMusicFolderId =
-            new MutableLiveData<>(Preferences.getActiveMusicFolderId());
+            new MutableLiveData<>(LibraryPreferences.getActiveMusicFolderId());
 
     public MainViewModel(@NonNull Application application) {
         super(application);
@@ -44,10 +45,10 @@ public class MainViewModel extends AndroidViewModel {
     }
 
     public void setActiveMusicFolderId(String musicFolderId) {
-        Preferences.setActiveMusicFolderId(musicFolderId);
+        LibraryPreferences.setActiveMusicFolderId(musicFolderId);
         // Read back instead of posting the argument, so the sentinel that callers pass for every
         // library arrives here as the null that getActiveMusicFolderId reports for it.
-        activeMusicFolderId.setValue(Preferences.getActiveMusicFolderId());
+        activeMusicFolderId.setValue(LibraryPreferences.getActiveMusicFolderId());
     }
 
     public boolean isQueueLoaded() {

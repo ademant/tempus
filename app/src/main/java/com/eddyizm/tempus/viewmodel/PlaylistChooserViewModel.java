@@ -14,7 +14,7 @@ import androidx.media3.common.util.UnstableApi;
 import com.eddyizm.tempus.repository.PlaylistRepository;
 import com.eddyizm.tempus.subsonic.models.Child;
 import com.eddyizm.tempus.subsonic.models.Playlist;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.LibraryPreferences;
 import com.google.common.collect.Lists;
 
 import java.util.ArrayList;
@@ -54,14 +54,14 @@ public class PlaylistChooserViewModel extends AndroidViewModel {
     @OptIn(markerClass = UnstableApi.class)
     public LiveData<List<Playlist>> getPlaylistList() {
         playlistRepository.refreshAllPlaylists();
-        String sortOrder = Preferences.getHomeSortPlaylists();
+        String sortOrder = LibraryPreferences.getHomeSortPlaylists();
         return playlistRepository.getSortedPlaylists(sortOrder);
     }
 
     @OptIn(markerClass = UnstableApi.class)
     public void addSongsToPlaylist(LifecycleOwner owner, Dialog dialog, String playlistId) {
         List<String> songIds = Lists.transform(toAdd, Child::getId);
-        if (Preferences.allowPlaylistDuplicates()) {
+        if (LibraryPreferences.allowPlaylistDuplicates()) {
             playlistRepository.addSongToPlaylist(playlistId, new ArrayList<>(songIds), getIsPlaylistPublic());
             dialog.dismiss();
         } else {

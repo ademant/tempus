@@ -14,7 +14,7 @@ import com.eddyizm.tempus.glide.CustomGlideRequest;
 import com.eddyizm.tempus.util.AssetLinkUtil;
 import com.eddyizm.tempus.util.Constants;
 import com.eddyizm.tempus.util.MusicUtil;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.ServerPreferences;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.util.Objects;
@@ -183,7 +183,7 @@ public class TrackInfoDialog extends DialogFragment {
     private void setTrackTranscodingInfo() {
         StringBuilder info = new StringBuilder();
 
-        boolean prioritizeServerTranscoding = Preferences.isServerPrioritized();
+        boolean prioritizeServerTranscoding = ServerPreferences.isServerPrioritized();
 
         String transcodingExtension = MusicUtil.getTranscodingFormatPreference();
         String transcodingBitrate = Integer.parseInt(MusicUtil.getBitratePreference()) != 0 ? Integer.parseInt(MusicUtil.getBitratePreference()) + "kbps" : "Original";

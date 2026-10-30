@@ -16,7 +16,7 @@ import com.eddyizm.tempus.databinding.FragmentHomeBinding;
 import com.eddyizm.tempus.navigation.NavigationController;
 import com.eddyizm.tempus.ui.activity.MainActivity;
 import com.eddyizm.tempus.ui.fragment.pager.HomePager;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.UiPreferences;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.tabs.TabLayout;
@@ -88,10 +88,10 @@ public class HomeFragment extends Fragment {
 
         pager.addFragment(new HomeTabMusicFragment(), getString(R.string.home_section_music), R.drawable.ic_home);
 
-        if (Preferences.isPodcastSectionVisible())
+        if (UiPreferences.isPodcastSectionVisible())
             pager.addFragment(new HomeTabPodcastFragment(), getString(R.string.home_section_podcast), R.drawable.ic_graphic_eq);
 
-        if (Preferences.isRadioSectionVisible())
+        if (UiPreferences.isRadioSectionVisible())
             pager.addFragment(new HomeTabRadioFragment(), getString(R.string.home_section_radio), R.drawable.ic_play_for_work);
 
         bind.homeViewPager.setAdapter(pager);
@@ -105,7 +105,7 @@ public class HomeFragment extends Fragment {
                 }
         ).attach();
 
-        tabLayout.setVisibility(Preferences.isPodcastSectionVisible() || Preferences.isRadioSectionVisible() ? View.VISIBLE : View.GONE);
+        tabLayout.setVisibility(UiPreferences.isPodcastSectionVisible() || UiPreferences.isRadioSectionVisible() ? View.VISIBLE : View.GONE);
 
         bind.homeViewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override

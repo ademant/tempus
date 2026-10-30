@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import retrofit2.Response;
+import com.eddyizm.tempus.util.DownloadPreferences;
+import com.eddyizm.tempus.util.ServerPreferences;
 
 /**
  * Rebuilds the download table from the ExoPlayer download index.
@@ -83,7 +85,7 @@ public class DownloadRepair {
         // Not in repairIfNeeded: reaching this opens the database, and that caller is the main thread.
         int schemaVersion = AppDatabase.getInstance().getOpenHelper().getReadableDatabase().getVersion();
 
-        if (Preferences.getRepairedDownloadDatabaseVersion() == schemaVersion) return;
+        if (DownloadPreferences.getRepairedDownloadDatabaseVersion() == schemaVersion) return;
         if (!isUserAuthenticated()) return;
 
         List<CachedDownload> cached = readCachedDownloads(context);
@@ -168,8 +170,8 @@ public class DownloadRepair {
 
         // Nothing came back. Worth another launch or two in case this was the wrong server, but not
         // worth a full scan and a request per song on every launch for the rest of time.
-        int attempts = Preferences.getDownloadRepairAttempts() + 1;
-        Preferences.setDownloadRepairAttempts(attempts);
+        int attempts = DownloadPreferences.getDownloadRepairAttempts() + 1;
+        DownloadPreferences.setDownloadRepairAttempts(attempts);
 
         if (attempts >= MAX_ATTEMPTS) markRepaired(schemaVersion);
     }
@@ -202,12 +204,12 @@ public class DownloadRepair {
 
     // The schema version rather than a flag, so a later version repeating this finds it armed.
     private static void markRepaired(int schemaVersion) {
-        Preferences.setDownloadDatabaseRepaired(schemaVersion);
+        DownloadPreferences.setDownloadDatabaseRepaired(schemaVersion);
     }
 
     public static boolean isUserAuthenticated() {
-        return Preferences.getPassword() != null
-                || (Preferences.getToken() != null && Preferences.getSalt() != null);
+        return ServerPreferences.getPassword() != null
+                || (ServerPreferences.getToken() != null && ServerPreferences.getSalt() != null);
     }
 
     // Null when the index cannot be read: a reason to retry, not an empty result to act on.

@@ -8,7 +8,7 @@ import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.UnstableApi
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.eddyizm.tempus.App
-import com.eddyizm.tempus.util.Preferences
+import com.eddyizm.tempus.util.ServerPreferences
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -29,21 +29,21 @@ class CastArtworkConverterTest {
     // signed in, so seed a fake login to keep this hermetic on a clean device / CI (issue #115).
     @Before
     fun seedFakeSession() {
-        savedServer = Preferences.getServer()
-        savedUser = Preferences.getUser()
-        savedPassword = Preferences.getPassword()
-        Preferences.setServer("https://example.org")
-        Preferences.setUser("tester")
-        Preferences.setPassword("pw")
+        savedServer = ServerPreferences.getServer()
+        savedUser = ServerPreferences.getUser()
+        savedPassword = ServerPreferences.getPassword()
+        ServerPreferences.setServer("https://example.org")
+        ServerPreferences.setUser("tester")
+        ServerPreferences.setPassword("pw")
         App.getSubsonicClientInstance(true)
     }
 
     // The seeded login is global state; without this every later test in the run inherits it.
     @After
     fun restoreSession() {
-        Preferences.setServer(savedServer)
-        Preferences.setUser(savedUser)
-        Preferences.setPassword(savedPassword)
+        ServerPreferences.setServer(savedServer)
+        ServerPreferences.setUser(savedUser)
+        ServerPreferences.setPassword(savedPassword)
         App.getSubsonicClientInstance(true)
     }
 

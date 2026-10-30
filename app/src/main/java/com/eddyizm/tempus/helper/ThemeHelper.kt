@@ -19,14 +19,15 @@ import androidx.core.graphics.drawable.toDrawable
 import androidx.core.graphics.toColorInt
 
 import com.eddyizm.tempus.R
-import com.eddyizm.tempus.util.Preferences.getColorAccent
-import com.eddyizm.tempus.util.Preferences.isDarkThemeBlack
-import com.eddyizm.tempus.util.Preferences.isDynamicColorAccent
-import com.eddyizm.tempus.util.Preferences.getTheme
+import com.eddyizm.tempus.util.UiPreferences.getColorAccent
+import com.eddyizm.tempus.util.UiPreferences.isDarkThemeBlack
+import com.eddyizm.tempus.util.UiPreferences.isDynamicColorAccent
+import com.eddyizm.tempus.util.UiPreferences.getTheme
 
 import com.google.android.material.color.DynamicColors.applyToActivityIfAvailable
 import com.google.android.material.color.DynamicColorsOptions
 import com.google.android.material.elevation.SurfaceColors
+import com.eddyizm.tempus.util.UiPreferences
 
 object ThemeHelper {
     private const val TAG = "ThemeHelper"

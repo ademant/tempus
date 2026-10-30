@@ -34,22 +34,22 @@ class NetworkPlaybackSwitchesTest {
     fun upnpIsOffUntilTurnedOn() {
         // An update must not start discovering renderers on its own.
         withPreferences(emptyMap()) {
-            assertFalse(Preferences.isUpnpEnabled())
+            assertFalse(ServerPreferences.isUpnpEnabled())
         }
     }
 
     @Test
     fun lanRemoteIsOffUntilTurnedOn() {
         withPreferences(emptyMap()) {
-            assertFalse(Preferences.isLanRemoteEnabled())
+            assertFalse(ServerPreferences.isLanRemoteEnabled())
         }
     }
 
     @Test
     fun switchesReadWhatWasSaved() {
         withPreferences(mapOf(Preferences.UPNP_ENABLED to true, Preferences.LAN_REMOTE_ENABLED to true)) {
-            assertTrue(Preferences.isUpnpEnabled())
-            assertTrue(Preferences.isLanRemoteEnabled())
+            assertTrue(ServerPreferences.isUpnpEnabled())
+            assertTrue(ServerPreferences.isLanRemoteEnabled())
         }
     }
 

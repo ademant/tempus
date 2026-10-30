@@ -66,6 +66,8 @@ import com.eddyizm.tempus.util.Constants;
 import com.eddyizm.tempus.upnp.UpnpPlayer;
 import com.eddyizm.tempus.util.MusicUtil;
 import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.UiPreferences;
+import com.eddyizm.tempus.util.PlaybackPreferences;
 import com.eddyizm.tempus.viewmodel.PlayerBottomSheetViewModel;
 import com.eddyizm.tempus.viewmodel.RatingViewModel;
 import com.eddyizm.tempus.util.FavoriteRegistry;
@@ -251,7 +253,7 @@ public class PlayerControllerFragment extends Fragment {
                 PopupMenu popup = new PopupMenu(requireContext(), v);
                 popup.inflate(R.menu.player_overflow_menu);
 
-                int selectedEq = Preferences.getSelectedEqualizer();
+                int selectedEq = PlaybackPreferences.getSelectedEqualizer();
                 if (selectedEq != 1) {
                     popup.getMenu().removeItem(R.id.action_open_equalizer);
                 }
@@ -280,7 +282,7 @@ public class PlayerControllerFragment extends Fragment {
     }
 
     private void initQuickActionView() {
-        playerQuickActionView.setVisibility(Preferences.getQuickActionVisible() ? View.VISIBLE : View.GONE);
+        playerQuickActionView.setVisibility(UiPreferences.getQuickActionVisible() ? View.VISIBLE : View.GONE);
         updateQueueButtonTint(false);
 
         playerOpenQueueButton.setOnClickListener(view -> {
@@ -317,8 +319,8 @@ public class PlayerControllerFragment extends Fragment {
                 MediaBrowser mediaBrowser = mediaBrowserListenableFuture.get();
 
                 bind.nowPlayingMediaControllerView.setPlayer(com.eddyizm.tempus.lan.LanRemoteSession.isActive() ? remotePlayer : mediaBrowser);
-                mediaBrowser.setShuffleModeEnabled(Preferences.isShuffleModeEnabled());
-                mediaBrowser.setRepeatMode(Preferences.getRepeatMode());
+                mediaBrowser.setShuffleModeEnabled(PlaybackPreferences.isShuffleModeEnabled());
+                mediaBrowser.setRepeatMode(PlaybackPreferences.getRepeatMode());
                 setMediaControllerListener(mediaBrowser);
                 initSleepTimerButton(mediaBrowser);
                 initPlaybackSpeedButton(mediaBrowser);
@@ -356,12 +358,12 @@ public class PlayerControllerFragment extends Fragment {
 
             @Override
             public void onShuffleModeEnabledChanged(boolean shuffleModeEnabled) {
-                Preferences.setShuffleModeEnabled(shuffleModeEnabled);
+                PlaybackPreferences.setShuffleModeEnabled(shuffleModeEnabled);
             }
 
             @Override
             public void onRepeatModeChanged(int repeatMode) {
-                Preferences.setRepeatMode(repeatMode);
+                PlaybackPreferences.setRepeatMode(repeatMode);
             }
         });
     }
@@ -413,7 +415,7 @@ public class PlayerControllerFragment extends Fragment {
         }
 
         setTextIfChanged(playerMediaTitleLabel,
-                Preferences.getTrackNumberVisible()
+                UiPreferences.getTrackNumberVisible()
                         && mediaMetadata.trackNumber != null
                         && !String.valueOf(mediaMetadata.trackNumber).isEmpty()
                                 ? String.format("%02d", mediaMetadata.trackNumber) + ". "
@@ -476,7 +478,7 @@ public class PlayerControllerFragment extends Fragment {
                     items.add(samplingRate);
                 String mediaQuality = TextUtils.join(" • ", items);
 
-                playerMediaBitrate.setVisibility(Preferences.getBitrateVisible() ? View.VISIBLE : View.GONE);
+                playerMediaBitrate.setVisibility(UiPreferences.getBitrateVisible() ? View.VISIBLE : View.GONE);
                 playerMediaBitrate.setText(isLocal ? mediaQuality : mediaQuality);
             }
         }
@@ -538,17 +540,17 @@ public class PlayerControllerFragment extends Fragment {
 
         if (Objects.equals(browser.getMediaMetadata().extras.getString("type"), Constants.MEDIA_TYPE_RADIO)) {
             playerMediaBitrate.setText((format.bitrate / 1000) + "kbps");
-            playerMediaBitrate.setVisibility(Preferences.getBitrateVisible() ? View.VISIBLE : View.GONE);
+            playerMediaBitrate.setVisibility(UiPreferences.getBitrateVisible() ? View.VISIBLE : View.GONE);
         } else if (format.bitrate != Format.NO_VALUE && format.bitrate > 0) {
             if (transcoded) {
                 playerMediaBitrate.setText((format.bitrate / 1000) + "kbps");
-                playerMediaBitrate.setVisibility(Preferences.getBitrateVisible() ? View.VISIBLE : View.GONE);
+                playerMediaBitrate.setVisibility(UiPreferences.getBitrateVisible() ? View.VISIBLE : View.GONE);
             }
         } else if (transcoded) {
             String targetBitrate = MusicUtil.getBitratePreference();
             if (!targetBitrate.equals("0")) {
                 playerMediaBitrate.setText(targetBitrate + "kbps");
-                playerMediaBitrate.setVisibility(Preferences.getBitrateVisible() ? View.VISIBLE : View.GONE);
+                playerMediaBitrate.setVisibility(UiPreferences.getBitrateVisible() ? View.VISIBLE : View.GONE);
             } else {
                 playerMediaBitrate.setVisibility(View.GONE);
             }
@@ -566,8 +568,8 @@ public class PlayerControllerFragment extends Fragment {
                 .setInterpolator(new AccelerateDecelerateInterpolator());
         TransitionManager.beginDelayedTransition(parent, transition);
 
-        playerMediaBitrate.setVisibility(Preferences.getBitrateVisible() ? View.GONE : View.VISIBLE);
-        Preferences.setBitrateVisible(!Preferences.getBitrateVisible());
+        playerMediaBitrate.setVisibility(UiPreferences.getBitrateVisible() ? View.GONE : View.VISIBLE);
+        UiPreferences.setBitrateVisible(!UiPreferences.getBitrateVisible());
     }
 
     private boolean toggleQuickActionVisiblity() {
@@ -579,8 +581,8 @@ public class PlayerControllerFragment extends Fragment {
                 .setDuration(500)
                 .setInterpolator(new AccelerateDecelerateInterpolator());
         TransitionManager.beginDelayedTransition(parent, transition);
-        playerQuickActionView.setVisibility(Preferences.getQuickActionVisible() ? View.GONE : View.VISIBLE);
-        Preferences.setQuickActionVisible(!Preferences.getQuickActionVisible());
+        playerQuickActionView.setVisibility(UiPreferences.getQuickActionVisible() ? View.GONE : View.VISIBLE);
+        UiPreferences.setQuickActionVisible(!UiPreferences.getQuickActionVisible());
         return true;
     }
 
@@ -981,7 +983,7 @@ public class PlayerControllerFragment extends Fragment {
         });
 
         skipSilenceToggleButton.setOnClickListener(view -> {
-            Preferences.setSkipSilenceMode(!skipSilenceToggleButton.isChecked());
+            PlaybackPreferences.setSkipSilenceMode(!skipSilenceToggleButton.isChecked());
         });
     }
 
@@ -1027,7 +1029,7 @@ public class PlayerControllerFragment extends Fragment {
         if (ratingContainer == null)
             return;
 
-        if (Preferences.showItemStarRating()) {
+        if (UiPreferences.showItemStarRating()) {
             ratingContainer.setVisibility(View.VISIBLE);
         } else {
             ratingContainer.setVisibility(View.GONE);
@@ -1036,8 +1038,8 @@ public class PlayerControllerFragment extends Fragment {
 
     private void setPlaybackParameters(MediaBrowser mediaBrowser) {
         Button playbackSpeedButton = bind.getRoot().findViewById(R.id.player_playback_speed_button);
-        float currentSpeed = Preferences.getPlaybackSpeed();
-        boolean skipSilence = Preferences.isSkipSilenceMode();
+        float currentSpeed = PlaybackPreferences.getPlaybackSpeed();
+        boolean skipSilence = PlaybackPreferences.isSkipSilenceMode();
 
         mediaBrowser.setPlaybackParameters(getPlaybackParameters(currentSpeed));
         playbackSpeedButton.setText(getString(R.string.player_playback_speed, currentSpeed));
@@ -1073,15 +1075,15 @@ public class PlayerControllerFragment extends Fragment {
     }
 
     private PlaybackParameters getPlaybackParameters(float speed) {
-        float pitch = Preferences.isPlaybackSpeedPitchEnabled()
+        float pitch = PlaybackPreferences.isPlaybackSpeedPitchEnabled()
                 ? getAdjustedPitch(speed)
                 : 1.0f;
         return new PlaybackParameters(speed, pitch);
     }
 
     private float getAdjustedPitch(float speed) {
-        return Preferences.isPlaybackSpeedManualPitchEnabled()
-                ? Preferences.getPlaybackSpeedManualPitch()
+        return PlaybackPreferences.isPlaybackSpeedManualPitchEnabled()
+                ? PlaybackPreferences.getPlaybackSpeedManualPitch()
                 : speed;
     }
 

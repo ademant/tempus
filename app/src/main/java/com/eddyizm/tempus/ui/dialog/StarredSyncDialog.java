@@ -16,7 +16,7 @@ import com.eddyizm.tempus.databinding.DialogStarredSyncBinding;
 import com.eddyizm.tempus.model.Download;
 import com.eddyizm.tempus.util.DownloadUtil;
 import com.eddyizm.tempus.util.MappingUtil;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.DownloadPreferences;
 import com.eddyizm.tempus.viewmodel.StarredSyncViewModel;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
@@ -61,7 +61,7 @@ public class StarredSyncDialog extends DialogFragment {
             Button positiveButton = dialog.getButton(Dialog.BUTTON_POSITIVE);
             positiveButton.setOnClickListener(v -> {
                 starredSyncViewModel.getStarredTracks(requireActivity()).observe(requireActivity(), songs -> {
-                    if (songs != null && Preferences.getDownloadDirectoryUri() == null) {
+                    if (songs != null && DownloadPreferences.getDownloadDirectoryUri() == null) {
                         DownloadUtil.getDownloadTracker(context).download(
                                 MappingUtil.mapDownloads(songs),
                                 songs.stream().map(Download::new).collect(Collectors.toList())
@@ -74,13 +74,13 @@ public class StarredSyncDialog extends DialogFragment {
 
             Button neutralButton = dialog.getButton(Dialog.BUTTON_NEUTRAL);
             neutralButton.setOnClickListener(v -> {
-                Preferences.setStarredSyncEnabled(true);
+                DownloadPreferences.setStarredSyncEnabled(true);
                 dialog.dismiss();
             });
 
             Button negativeButton = dialog.getButton(Dialog.BUTTON_NEGATIVE);
             negativeButton.setOnClickListener(v -> {
-                Preferences.setStarredSyncEnabled(false);
+                DownloadPreferences.setStarredSyncEnabled(false);
                 if (onCancel != null) onCancel.run();
                 dialog.dismiss();
             });

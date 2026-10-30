@@ -12,7 +12,7 @@ import androidx.media3.datasource.cache.CacheWriter
 import androidx.media3.datasource.cache.ContentMetadata
 import com.eddyizm.tempus.util.Constants
 import com.eddyizm.tempus.util.DownloadUtil
-import com.eddyizm.tempus.util.Preferences
+import com.eddyizm.tempus.util.StreamingPreferences
 import com.eddyizm.tempus.util.StreamingCacheKeyFactory
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
@@ -45,13 +45,13 @@ object QueuePreloader {
 
     /** Must be called from the player's application thread. */
     fun preload(context: Context, player: Player) {
-        val count = Preferences.getPrecacheTracksCount()
+        val count = StreamingPreferences.getPrecacheTracksCount()
         if (count <= 0) return
-        if (Preferences.getStreamingCacheSize() <= 0L) return
+        if (StreamingPreferences.getStreamingCacheSize() <= 0L) return
 
         val appContext = context.applicationContext
 
-        if (Preferences.isPrecacheWifiOnly() && isMetered(appContext)) {
+        if (StreamingPreferences.isPrecacheWifiOnly() && isMetered(appContext)) {
             cancel()
             return
         }

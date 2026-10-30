@@ -16,7 +16,7 @@ import com.eddyizm.tempus.databinding.DialogStarredAlbumSyncBinding;
 import com.eddyizm.tempus.model.Download;
 import com.eddyizm.tempus.util.DownloadUtil;
 import com.eddyizm.tempus.util.MappingUtil;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.DownloadPreferences;
 import com.eddyizm.tempus.viewmodel.StarredAlbumsSyncViewModel;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
@@ -73,13 +73,13 @@ public class StarredAlbumSyncDialog extends DialogFragment {
 
             Button neutralButton = dialog.getButton(Dialog.BUTTON_NEUTRAL);
             neutralButton.setOnClickListener(v -> {
-                Preferences.setStarredAlbumsSyncEnabled(true);
+                DownloadPreferences.setStarredAlbumsSyncEnabled(true);
                 dialog.dismiss();
             });
 
             Button negativeButton = dialog.getButton(Dialog.BUTTON_NEGATIVE);
             negativeButton.setOnClickListener(v -> {
-                Preferences.setStarredAlbumsSyncEnabled(false);
+                DownloadPreferences.setStarredAlbumsSyncEnabled(false);
                 if (onCancel != null) onCancel.run();
                 dialog.dismiss();
             });
