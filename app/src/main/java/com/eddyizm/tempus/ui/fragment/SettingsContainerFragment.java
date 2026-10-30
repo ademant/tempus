@@ -66,6 +66,12 @@ import com.eddyizm.tempus.util.DownloadUtil;
 import com.eddyizm.tempus.subsonic.models.MusicFolder;
 import com.eddyizm.tempus.util.ExternalAudioReader;
 import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.UiPreferences;
+import com.eddyizm.tempus.util.StreamingPreferences;
+import com.eddyizm.tempus.util.ServerPreferences;
+import com.eddyizm.tempus.util.PlaybackPreferences;
+import com.eddyizm.tempus.util.LibraryPreferences;
+import com.eddyizm.tempus.util.DownloadPreferences;
 import com.eddyizm.tempus.util.UIUtil;
 import com.eddyizm.tempus.viewmodel.MainViewModel;
 import com.eddyizm.tempus.viewmodel.SettingViewModel;
@@ -143,7 +149,7 @@ public class SettingsContainerFragment extends PreferenceFragmentCompat {
                                         Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                                 );
 
-                                Preferences.setDownloadDirectoryUri(uri.toString());
+                                DownloadPreferences.setDownloadDirectoryUri(uri.toString());
                                 ExternalAudioReader.refreshCache();
                                 Toast.makeText(requireContext(), R.string.settings_download_folder_set, Toast.LENGTH_SHORT).show();
                                 checkDownloadDirectory();
@@ -271,7 +277,7 @@ public class SettingsContainerFragment extends PreferenceFragmentCompat {
             downloadWifiOnlyPreference.setOnPreferenceChangeListener((preference, newValue) -> {
                 if (newValue instanceof Boolean) {
                     boolean enabled = (Boolean) newValue;
-                    Preferences.setDownloadWifiOnly(enabled);
+                    DownloadPreferences.setDownloadWifiOnly(enabled);
                     Requirements requirements = enabled
                             ? new Requirements(Requirements.NETWORK_UNMETERED)
                             : new Requirements(0);
@@ -378,7 +384,7 @@ public class SettingsContainerFragment extends PreferenceFragmentCompat {
         Preference equalizer = findPreference("system_equalizer");
         Preference builtinEqualizer = findPreference("builtin_equalizer");
 
-        int selectedEqValue = Preferences.getSelectedEqualizer();
+        int selectedEqValue = PlaybackPreferences.getSelectedEqualizer();
 
         if (builtinEqualizer != null) {
             builtinEqualizer.setVisible(selectedEqValue == 1);
@@ -413,7 +419,7 @@ public class SettingsContainerFragment extends PreferenceFragmentCompat {
             if (requireContext().getExternalFilesDirs(null)[1] == null) {
                 storage.setVisible(false);
             } else {
-                storage.setSummary(Preferences.getStreamingCacheStoragePreference() == 0 ? R.string.download_storage_internal_dialog_negative_button : R.string.download_storage_external_dialog_positive_button);
+                storage.setSummary(StreamingPreferences.getStreamingCacheStoragePreference() == 0 ? R.string.download_storage_internal_dialog_negative_button : R.string.download_storage_external_dialog_positive_button);
             }
         } catch (Exception exception) {
             storage.setVisible(false);
@@ -429,7 +435,7 @@ public class SettingsContainerFragment extends PreferenceFragmentCompat {
             if (requireContext().getExternalFilesDirs(null)[1] == null) {
                 storage.setVisible(false);
             } else {
-                int pref = Preferences.getDownloadStoragePreference();
+                int pref = DownloadPreferences.getDownloadStoragePreference();
                 if (pref == 0) {
                     storage.setSummary(R.string.download_storage_internal_dialog_negative_button);
                 } else if (pref == 1) {
@@ -449,7 +455,7 @@ public class SettingsContainerFragment extends PreferenceFragmentCompat {
 
         if (directory == null) return;
 
-        String current = Preferences.getDownloadDirectoryUri();
+        String current = DownloadPreferences.getDownloadDirectoryUri();
         if (current != null) {
             if (storage != null) storage.setVisible(false);
             directory.setVisible(true);
@@ -458,7 +464,7 @@ public class SettingsContainerFragment extends PreferenceFragmentCompat {
             directory.setSummary(current);
         } else {
             if (storage != null) storage.setVisible(true);
-            if (Preferences.getDownloadStoragePreference() == 2) {
+            if (DownloadPreferences.getDownloadStoragePreference() == 2) {
                 directory.setVisible(true);
                 directory.setIcon(R.drawable.ic_folder);
                 directory.setTitle(R.string.settings_set_download_folder);
@@ -558,7 +564,7 @@ public class SettingsContainerFragment extends PreferenceFragmentCompat {
         // The widget's own key is shared by every server, so left alone it would show whichever
         // library was picked last, anywhere. Load this server's choice in so the screen cannot
         // claim a filter that is not being applied.
-        String activeMusicFolderId = Preferences.getActiveMusicFolderId();
+        String activeMusicFolderId = LibraryPreferences.getActiveMusicFolderId();
         libraryPref.setValue(activeMusicFolderId != null ? activeMusicFolderId : Preferences.MUSIC_FOLDER_ALL);
 
         setMusicLibrarySummary(libraryPref);
@@ -606,7 +612,7 @@ public class SettingsContainerFragment extends PreferenceFragmentCompat {
             // would filter everything away. Discarding the choice is permanent though, so it takes
             // positive evidence: other libraries came back and this one was not among them. An
             // empty response is not that, and a server offering none shows nothing either way.
-            String storedMusicFolderId = Preferences.getActiveMusicFolderId();
+            String storedMusicFolderId = LibraryPreferences.getActiveMusicFolderId();
             if (storedMusicFolderId != null && !ids.isEmpty() && !ids.contains(storedMusicFolderId)) {
                 libraryPref.setValue(Preferences.MUSIC_FOLDER_ALL);
                 mainViewModel.setActiveMusicFolderId(null);
@@ -621,7 +627,7 @@ public class SettingsContainerFragment extends PreferenceFragmentCompat {
 
     private void checkLanPlayback() {
         Preference lanPref = findPreference("lan_playback");
-        if (lanPref != null) lanPref.setVisible(Preferences.isLanRemoteEnabled());
+        if (lanPref != null) lanPref.setVisible(ServerPreferences.isLanRemoteEnabled());
     }
 
     private void actionLanRemote() {
@@ -661,7 +667,7 @@ public class SettingsContainerFragment extends PreferenceFragmentCompat {
         // showing a control with nothing to choose between beats hiding one that was needed.
         libraryPref.setVisible(musicFolderCount == null
                 || musicFolderCount > 1
-                || Preferences.getActiveMusicFolderId() != null);
+                || LibraryPreferences.getActiveMusicFolderId() != null);
     }
 
     private void setMusicLibrarySummary(ListPreference libraryPref) {
@@ -674,7 +680,7 @@ public class SettingsContainerFragment extends PreferenceFragmentCompat {
         // getEntry() is null while the value is not among the entries: the folder list has not
         // arrived, or it arrived without enough evidence to clear a stale id. Saying "all
         // libraries" would contradict what is still being sent, so name the id, poorly as it reads.
-        String activeMusicFolderId = Preferences.getActiveMusicFolderId();
+        String activeMusicFolderId = LibraryPreferences.getActiveMusicFolderId();
         libraryPref.setSummary(activeMusicFolderId != null
                 ? activeMusicFolderId
                 : getString(R.string.settings_music_library_all));
@@ -846,11 +852,11 @@ public class SettingsContainerFragment extends PreferenceFragmentCompat {
         Preference pref = findPreference("set_download_directory");
         if (pref != null) {
             pref.setOnPreferenceClickListener(preference -> {
-                String current = Preferences.getDownloadDirectoryUri();
+                String current = DownloadPreferences.getDownloadDirectoryUri();
 
                 if (current != null) {
-                    Preferences.setDownloadDirectoryUri(null);
-                    Preferences.setDownloadStoragePreference(0);
+                    DownloadPreferences.setDownloadDirectoryUri(null);
+                    DownloadPreferences.setDownloadStoragePreference(0);
                     ExternalAudioReader.refreshCache();
                     Toast.makeText(requireContext(), R.string.settings_download_folder_cleared, Toast.LENGTH_SHORT).show();
                     checkStorage();
@@ -881,10 +887,10 @@ public class SettingsContainerFragment extends PreferenceFragmentCompat {
             return;
         }
 
-        preference.setChecked(Preferences.showShuffleInsteadOfHeart());
+        preference.setChecked(UiPreferences.showShuffleInsteadOfHeart());
         preference.setOnPreferenceChangeListener((pref, newValue) -> {
             if (newValue instanceof Boolean) {
-                Preferences.setShuffleInsteadOfHeart((Boolean) newValue);
+                UiPreferences.setShuffleInsteadOfHeart((Boolean) newValue);
             }
             return true;
         });
@@ -896,10 +902,10 @@ public class SettingsContainerFragment extends PreferenceFragmentCompat {
             return;
         }
 
-        preference.setChecked(Preferences.isAutoDownloadLyricsEnabled());
+        preference.setChecked(DownloadPreferences.isAutoDownloadLyricsEnabled());
         preference.setOnPreferenceChangeListener((pref, newValue) -> {
             if (newValue instanceof Boolean) {
-                Preferences.setAutoDownloadLyricsEnabled((Boolean) newValue);
+                DownloadPreferences.setAutoDownloadLyricsEnabled((Boolean) newValue);
             }
             return true;
         });
@@ -977,13 +983,13 @@ public class SettingsContainerFragment extends PreferenceFragmentCompat {
 
         // Seed the widget with the currently persisted value so it shows the
         // correct position when the settings screen opens.
-        preampPref.setValue((int) Preferences.getLoudnessPreamp());
+        preampPref.setValue((int) PlaybackPreferences.getLoudnessPreamp());
 
         preampPref.setOnPreferenceChangeListener((preference, newValue) -> {
             if (!(newValue instanceof Integer)) return true;
 
             int dB = (Integer) newValue;
-            Preferences.setLoudnessPreamp((float) dB);
+            PlaybackPreferences.setLoudnessPreamp((float) dB);
 
             // Immediately re-apply gain to whatever is playing so the user can
             // hear the effect without restarting playback.
@@ -1009,7 +1015,7 @@ public class SettingsContainerFragment extends PreferenceFragmentCompat {
                             newEntry = selectedEqualizer.getEntries()[idx];
                         }
                         selectedEqualizer.setSummary(newEntry);
-                        Preferences.setSelectedEqualizer(newValStr);
+                        PlaybackPreferences.setSelectedEqualizer(newValStr);
 
                         checkSystemEqualizer();
 
@@ -1027,14 +1033,14 @@ public class SettingsContainerFragment extends PreferenceFragmentCompat {
         Preference importPref = findPreference("parametric_eq_import");
         if (importPref == null) return;
 
-        String text = Preferences.getParametricEqProfile();
+        String text = PlaybackPreferences.getParametricEqProfile();
         ParametricProfile profile = text != null ? ParametricProfile.parse(text) : null;
         if (profile != null) {
             double preampDb = profile.getPreampDb();
             importPref.setSummary(getString(preampDb > 0
                             ? R.string.settings_parametric_eq_summary_louder
                             : R.string.settings_parametric_eq_summary,
-                    Preferences.getParametricEqName(),
+                    PlaybackPreferences.getParametricEqName(),
                     String.format(Locale.getDefault(), "%.1f", Math.abs(preampDb))));
         }
 
@@ -1056,7 +1062,7 @@ public class SettingsContainerFragment extends PreferenceFragmentCompat {
         }
 
         String name = displayName(uri);
-        Preferences.setParametricEqProfile(profile.toText(), name);
+        PlaybackPreferences.setParametricEqProfile(profile.toText(), name);
         if (mediaServiceBinder != null) {
             mediaServiceBinder.reloadEqualizer();
         } else {

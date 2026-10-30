@@ -13,7 +13,7 @@ import com.eddyizm.tempus.glide.CustomGlideRequest;
 import com.eddyizm.tempus.interfaces.ClickCallback;
 import com.eddyizm.tempus.subsonic.models.AlbumID3;
 import com.eddyizm.tempus.util.Constants;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.UiPreferences;
 import com.eddyizm.tempus.util.TileSizeManager;
 
 import java.util.Collections;
@@ -50,7 +50,7 @@ public class AlbumCarouselAdapter extends RecyclerView.Adapter<AlbumCarouselAdap
 
         AlbumID3 album = albums.get(position);
 
-        if (Preferences.getAlbumYearVisible()) {
+        if (UiPreferences.getAlbumYearVisible()) {
             String albumName = album.getName() + " (" + album.getYear() + ")";
             holder.item.albumNameLabel.setText(albumName);
         } else {

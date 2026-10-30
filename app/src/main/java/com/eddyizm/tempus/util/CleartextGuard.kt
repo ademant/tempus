@@ -12,8 +12,8 @@ import java.io.IOException
 class CleartextGuard : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val url = chain.request().url.toString()
-        val allow = Preferences.isAllowUnencryptedServer()
-        val blocked = listOf(Preferences.getServer(), Preferences.getLocalAddress())
+        val allow = ServerPreferences.isAllowUnencryptedServer()
+        val blocked = listOf(ServerPreferences.getServer(), ServerPreferences.getLocalAddress())
             .any { ServerAddressPolicy.blocksRequest(url, it, allow) }
         if (blocked) {
             throw IOException("Unencrypted connection to this server is not allowed. Use HTTPS, or allow unencrypted connections in the server settings.")

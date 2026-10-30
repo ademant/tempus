@@ -22,7 +22,7 @@ import com.eddyizm.tempus.equalizer.EqualizerManager
 import com.eddyizm.tempus.service.BaseMediaService
 import com.eddyizm.tempus.service.MediaService
 import com.eddyizm.tempus.ui.activity.MainActivity
-import com.eddyizm.tempus.util.Preferences
+import com.eddyizm.tempus.util.PlaybackPreferences
 import com.google.android.material.appbar.MaterialToolbar
 
 @UnstableApi
@@ -112,7 +112,7 @@ class EqualizerFragment : Fragment() {
     ): View {
         root = inflater.inflate(R.layout.fragment_equalizer, container, false)
         eqSwitch = root.findViewById(R.id.equalizer_switch)
-        eqSwitch.isChecked = Preferences.isEqualizerEnabled()
+        eqSwitch.isChecked = PlaybackPreferences.isEqualizerEnabled()
         eqSwitch.jumpDrawablesToCurrentState()
 
         initAppBar()
@@ -151,7 +151,7 @@ class EqualizerFragment : Fragment() {
         updateUiEnabledState(eqSwitch.isChecked)
         eqSwitch.setOnCheckedChangeListener { _, isChecked ->
             manager.setEnabled(isChecked)
-            Preferences.setEqualizerEnabled(isChecked)
+            PlaybackPreferences.setEqualizerEnabled(isChecked)
             updateUiEnabledState(isChecked)
         }
 
@@ -179,7 +179,7 @@ class EqualizerFragment : Fragment() {
         val minLevelDb = bandLevelRange[0] / 100
         val maxLevelDb = bandLevelRange[1] / 100
 
-        val savedLevels = Preferences.getEqualizerBandLevels(bands)
+        val savedLevels = PlaybackPreferences.getEqualizerBandLevels(bands)
         for (i in 0 until bands) {
             val band = i.toShort()
             val freq = manager.getCenterFreq(band) ?: 0
@@ -256,26 +256,26 @@ class EqualizerFragment : Fragment() {
             manager.setBandLevel(i.toShort(), (0).toShort())
             bandSeekBars.getOrNull(i)?.progress = midLevelDb - minLevelDb
         }
-        Preferences.setEqualizerBandLevels(ShortArray(bands.toInt()))
+        PlaybackPreferences.setEqualizerBandLevels(ShortArray(bands.toInt()))
     }
 
     private fun saveBandLevelsToPreferences() {
         val manager = equalizerManager ?: return
         val bands = manager.getNumberOfBands()
         val levels = ShortArray(bands.toInt()) { i -> manager.getBandLevel(i.toShort()) ?: 0 }
-        Preferences.setEqualizerBandLevels(levels)
+        PlaybackPreferences.setEqualizerBandLevels(levels)
     }
 
     private fun restoreEqualizerPreferences() {
         val manager = equalizerManager ?: return
-        eqSwitch.isChecked = Preferences.isEqualizerEnabled()
+        eqSwitch.isChecked = PlaybackPreferences.isEqualizerEnabled()
         updateUiEnabledState(eqSwitch.isChecked)
 
         val bands = manager.getNumberOfBands()
         val bandLevelRange = manager.getBandLevelRange() ?: shortArrayOf(-1500, 1500)
         val minLevelDb = bandLevelRange[0] / 100
 
-        val savedLevels = Preferences.getEqualizerBandLevels(bands)
+        val savedLevels = PlaybackPreferences.getEqualizerBandLevels(bands)
         for (i in 0 until bands) {
             val savedDb = savedLevels[i] / 100
             manager.setBandLevel(i.toShort(), (savedDb * 100).toShort())

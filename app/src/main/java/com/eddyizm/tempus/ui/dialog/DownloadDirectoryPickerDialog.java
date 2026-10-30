@@ -14,7 +14,7 @@ import androidx.fragment.app.DialogFragment;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.eddyizm.tempus.R;
 import com.eddyizm.tempus.util.ExternalAudioReader;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.DownloadPreferences;
 
 public class DownloadDirectoryPickerDialog extends DialogFragment {
 
@@ -37,7 +37,7 @@ public class DownloadDirectoryPickerDialog extends DialogFragment {
                                 Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                             );
 
-                            Preferences.setDownloadDirectoryUri(uri.toString());
+                            DownloadPreferences.setDownloadDirectoryUri(uri.toString());
                             ExternalAudioReader.refreshCache();
 
                             Toast.makeText(requireContext(), "Download directory set:\n" + uri.toString(), Toast.LENGTH_LONG).show();

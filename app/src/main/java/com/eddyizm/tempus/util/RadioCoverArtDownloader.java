@@ -16,6 +16,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import com.eddyizm.tempus.util.UiPreferences;
 
 public class RadioCoverArtDownloader {
     private static final String TAG = "RadioCoverArtDownloader";
@@ -70,7 +71,7 @@ public class RadioCoverArtDownloader {
             return coverArtUrl;
         }
         return com.eddyizm.tempus.glide.CustomGlideRequest.createUrl(
-                coverArtUrl, Preferences.getImageSize());
+                coverArtUrl, UiPreferences.getImageSize());
     }
 
     private static boolean downloadDirect(String urlString, File targetFile) {

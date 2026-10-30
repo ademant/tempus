@@ -2,6 +2,7 @@ package com.eddyizm.tempus.util;
 
 import android.content.Context;
 import android.util.DisplayMetrics;
+import com.eddyizm.tempus.util.UiPreferences;
 
 public class TileSizeManager {
 
@@ -77,7 +78,7 @@ public class TileSizeManager {
         float screenHeight = metrics.heightPixels;
 
         // retrieve the divisor in the preferences
-        int userTileSize = Math.max(2, Math.min(6, Preferences.getTileSize()));
+        int userTileSize = Math.max(2, Math.min(6, UiPreferences.getTileSize()));
         float divisor = (float)userTileSize;
 
         // little pading = 10
@@ -111,7 +112,7 @@ public class TileSizeManager {
         float screenHeight = metrics.heightPixels;
 
         // retrieve the divisor in the preferences
-        int userTileSize = Math.max(2, Math.min(3, Preferences.getTileSize()));
+        int userTileSize = Math.max(2, Math.min(3, UiPreferences.getTileSize()));
         float divisor = (float)userTileSize;
 
         // little pading = 10
@@ -146,7 +147,7 @@ public class TileSizeManager {
         float discoverDivisor;
 
         // retrieve the divisor in the preferences
-        int userTileSize = Math.max(2, Math.min(6, Preferences.getTileSize()));
+        int userTileSize = Math.max(2, Math.min(6, UiPreferences.getTileSize()));
 
         switch (userTileSize) {
             default:

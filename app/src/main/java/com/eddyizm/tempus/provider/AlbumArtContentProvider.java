@@ -16,7 +16,8 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.eddyizm.tempus.BuildConfig;
 import com.eddyizm.tempus.glide.CustomGlideRequest;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.UiPreferences;
+import com.eddyizm.tempus.util.StreamingPreferences;
 import com.eddyizm.tempus.util.RadioCoverArtDownloader;
 
 import java.io.File;
@@ -74,7 +75,7 @@ public class AlbumArtContentProvider extends ContentProvider {
             artworkUri = Uri.parse(((ArtworkIds.Parsed.HomePage) parsed).getUrl());
         } else if (parsed instanceof ArtworkIds.Parsed.ServerCover) {
             String coverId = ((ArtworkIds.Parsed.ServerCover) parsed).getId();
-            artworkUri = Uri.parse(CustomGlideRequest.createUrl(coverId, Preferences.getImageSize()));
+            artworkUri = Uri.parse(CustomGlideRequest.createUrl(coverId, UiPreferences.getImageSize()));
         } else {
             throw new FileNotFoundException("Rejected artwork id");
         }
@@ -101,7 +102,7 @@ public class AlbumArtContentProvider extends ContentProvider {
                                 .asFile()
                                 .load(artworkUriFinal)
                                 .diskCacheStrategy(DiskCacheStrategy.DATA);
-                        if (Preferences.isDataSavingMode()) {
+                        if (StreamingPreferences.isDataSavingMode()) {
                             fileRequest = fileRequest.onlyRetrieveFromCache(true);
                         }
                         file = fileRequest.submit().get();

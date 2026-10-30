@@ -21,6 +21,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import com.eddyizm.tempus.util.DownloadPreferences;
 
 public class ExternalAudioReader {
 
@@ -47,7 +48,7 @@ public class ExternalAudioReader {
     }
 
     public static void ensureCache() {
-        String uriString = Preferences.getDownloadDirectoryUri();
+        String uriString = DownloadPreferences.getDownloadDirectoryUri();
         if (uriString == null) {
             synchronized (LOCK) {
                 cache.clear();
@@ -173,7 +174,7 @@ public class ExternalAudioReader {
     }
 
     private static void rebuildCache() {
-        String uriString = Preferences.getDownloadDirectoryUri();
+        String uriString = DownloadPreferences.getDownloadDirectoryUri();
         if (uriString == null) {
             synchronized (LOCK) {
                 cache.clear();

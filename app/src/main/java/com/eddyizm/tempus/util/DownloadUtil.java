@@ -45,6 +45,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.OkHttpClient;
+import com.eddyizm.tempus.util.DownloadPreferences;
+import com.eddyizm.tempus.util.StreamingPreferences;
 
 @UnstableApi
 public final class DownloadUtil {
@@ -212,7 +214,7 @@ public final class DownloadUtil {
 
             streamingCache = new SimpleCache(
                     streamingCacheDirectory,
-                    new LeastRecentlyUsedCacheEvictor(Preferences.getStreamingCacheSize() * 1024 * 1024),
+                    new LeastRecentlyUsedCacheEvictor(StreamingPreferences.getStreamingCacheSize() * 1024 * 1024),
                     getDatabaseProvider(context)
             );
         }
@@ -230,7 +232,7 @@ public final class DownloadUtil {
                     Executors.newFixedThreadPool(6)
             );
 
-            if (Preferences.isDownloadWifiOnly()) {
+            if (DownloadPreferences.isDownloadWifiOnly()) {
                 downloadManager.setRequirements(new Requirements(Requirements.NETWORK_UNMETERED));
             }
 
@@ -248,7 +250,7 @@ public final class DownloadUtil {
 
     private static synchronized File getStreamingCacheDirectory(Context context) {
         if (streamingCacheDirectory == null) {
-            if (Preferences.getStreamingCacheStoragePreference() == 0) {
+            if (StreamingPreferences.getStreamingCacheStoragePreference() == 0) {
                 streamingCacheDirectory = context.getExternalFilesDirs(null)[0];
                 // workaround for crdroid degoogled android 16 sometimes unable to write to the
                 // default external files dir, fall back to internal dir if we can't write
@@ -260,7 +262,7 @@ public final class DownloadUtil {
                     streamingCacheDirectory = context.getExternalFilesDirs(null)[1];
                 } catch (Exception exception) {
                     streamingCacheDirectory = context.getExternalFilesDirs(null)[0];
-                    Preferences.setStreamingCacheStoragePreference(0);
+                    StreamingPreferences.setStreamingCacheStoragePreference(0);
                 }
 
             }
@@ -271,7 +273,7 @@ public final class DownloadUtil {
 
     private static synchronized File getDownloadDirectory(Context context) {
         if (downloadDirectory == null) {
-            int pref = Preferences.getDownloadStoragePreference();
+            int pref = DownloadPreferences.getDownloadStoragePreference();
             if (pref == 0) {
                 downloadDirectory = context.getExternalFilesDirs(null)[0];
                 // workaround for crdroid degoogled android 16 sometimes unable to write to the
@@ -284,7 +286,7 @@ public final class DownloadUtil {
                     downloadDirectory = context.getExternalFilesDirs(null)[1];
                 } catch (Exception exception) {
                     downloadDirectory = context.getExternalFilesDirs(null)[0];
-                    Preferences.setDownloadStoragePreference(0);
+                    DownloadPreferences.setDownloadStoragePreference(0);
                 }
             } else {
                 downloadDirectory = context.getExternalFilesDirs(null)[0];
@@ -345,7 +347,7 @@ public final class DownloadUtil {
         Context appContext = context.getApplicationContext();
         Handler main = new Handler(Looper.getMainLooper());
 
-        if (Preferences.getDownloadDirectoryUri() == null) {
+        if (DownloadPreferences.getDownloadDirectoryUri() == null) {
             DownloaderManager manager = getDownloadTracker(context);
             List<Child> missing = byId.values().stream()
                     .filter(song -> !manager.isDownloaded(song.getId()) && !manager.isRequested(song.getId()))

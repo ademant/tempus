@@ -29,7 +29,7 @@ import com.eddyizm.tempus.ui.adapter.PodcastChannelHorizontalAdapter;
 import com.eddyizm.tempus.ui.adapter.PodcastEpisodeAdapter;
 import com.eddyizm.tempus.ui.dialog.PodcastChannelEditorDialog;
 import com.eddyizm.tempus.util.Constants;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.UiPreferences;
 import com.eddyizm.tempus.util.UIUtil;
 import com.eddyizm.tempus.viewmodel.PodcastViewModel;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -98,7 +98,7 @@ public class HomeTabPodcastFragment extends Fragment implements ClickCallback, P
         });
 
         bind.podcastChannelsTextViewClickable.setOnClickListener(v -> activity.navController.navigate(R.id.action_homeFragment_to_podcastChannelCatalogueFragment));
-        bind.hideSectionButton.setOnClickListener(v -> Preferences.setPodcastSectionHidden());
+        bind.hideSectionButton.setOnClickListener(v -> UiPreferences.setPodcastSectionHidden());
     }
 
     private void initPodcastView() {

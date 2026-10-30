@@ -6,7 +6,7 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.eddyizm.tempus.subsonic.models.Child
-import com.eddyizm.tempus.util.Preferences
+import com.eddyizm.tempus.util.ServerPreferences
 import kotlinx.parcelize.Parcelize
 import java.util.Date
 
@@ -59,7 +59,7 @@ class Chronology(
         replayGain = com.eddyizm.tempus.util.ReplayGainBundleUtil.fromBundle(
             mediaItem.mediaMetadata.extras
         )
-        server = Preferences.getServerId()
+        server = ServerPreferences.getServerId()
         timestamp = Date().time
     }
 }

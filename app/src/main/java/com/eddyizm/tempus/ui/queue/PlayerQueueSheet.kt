@@ -34,28 +34,29 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.eddyizm.tempus.subsonic.models.Child
-import com.eddyizm.tempus.util.Preferences
+import com.eddyizm.tempus.util.UiPreferences
+import com.eddyizm.tempus.util.DownloadPreferences
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @Composable
 fun rememberAppColorScheme(): ColorScheme {
     val context = LocalContext.current
     val isSystemDark = isSystemInDarkTheme()
-    val isDark = when (Preferences.getTheme()) {
+    val isDark = when (UiPreferences.getTheme()) {
         "light" -> false
         "dark" -> true
         else -> isSystemDark
     }
 
     val defaultScheme = when {
-        Preferences.isDynamicColorAccent() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+        UiPreferences.isDynamicColorAccent() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
         isDark -> darkColorScheme()
         else -> lightColorScheme()
     }
 
-    val isAmoled = isDark && Preferences.isDarkThemeBlack()
+    val isAmoled = isDark && UiPreferences.isDarkThemeBlack()
 
     return remember(context, isDark, isAmoled) {
         // MaterialColors resolves references and ColorStateLists correctly;
@@ -128,12 +129,12 @@ fun PlayerQueueSheet(
     if (!isOpen) return
 
     val isSystemDark = isSystemInDarkTheme()
-    val isDark = when (Preferences.getTheme()) {
+    val isDark = when (UiPreferences.getTheme()) {
         "light" -> false
         "dark" -> true
         else -> isSystemDark
     }
-    val isAmoled = isDark && Preferences.isDarkThemeBlack()
+    val isAmoled = isDark && UiPreferences.isDarkThemeBlack()
 
     val colorScheme = rememberAppColorScheme()
     val containerColor = if (isAmoled) Color.Black else colorScheme.surfaceContainerLow
@@ -246,7 +247,7 @@ fun PlayerQueueSheet(
                     songCount = currentSongs.size,
                     totalDurationSeconds = totalDurationSeconds,
                     upcomingSongsCount = upcomingCount,
-                    isSyncEnabled = Preferences.isSyncronizationEnabled(),
+                    isSyncEnabled = DownloadPreferences.isSyncronizationEnabled(),
                     onClearUpcoming = { onClearUpcoming(currentRawSongs, effectiveCurrentIndex) },
                     onShuffleUpcoming = { onShuffleUpcoming(currentRawSongs, effectiveCurrentIndex) },
                     onSaveToPlaylist = { onSaveToPlaylist(currentSongs.map { it.song }) },

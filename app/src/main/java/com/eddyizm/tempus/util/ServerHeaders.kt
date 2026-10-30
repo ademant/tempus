@@ -86,15 +86,15 @@ object ServerHeaders {
     /** Headers of the signed-in server if [url] points at it, otherwise empty. */
     @JvmStatic
     fun getHeadersForActiveServer(url: String?): Map<String, String> {
-        val raw = Preferences.getCustomHeaders()
+        val raw = ServerPreferences.getCustomHeaders()
         if (sources.isEmpty() && raw.isNullOrBlank()) return emptyMap()
         return getHeadersForUrl(
             url,
             ServerContext(
                 addresses = listOf(
-                    Preferences.getInUseServerAddress(),
-                    Preferences.getServer(),
-                    Preferences.getLocalAddress()
+                    ServerPreferences.getInUseServerAddress(),
+                    ServerPreferences.getServer(),
+                    ServerPreferences.getLocalAddress()
                 ),
                 customHeaders = raw
             )

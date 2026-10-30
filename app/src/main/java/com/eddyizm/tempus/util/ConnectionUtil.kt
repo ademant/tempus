@@ -38,7 +38,7 @@ object ConnectionUtil {
         if (pingDeferredUntil == Long.MAX_VALUE) pingDeferredUntil = SystemClock.elapsedRealtime() + pingWaitMs()
     }
 
-    private fun pingWaitMs(): Long = Preferences.getNetworkPingTimeout() * 1000L + 1_000L
+    private fun pingWaitMs(): Long = ServerPreferences.getNetworkPingTimeout() * 1000L + 1_000L
 
     @JvmStatic
     fun markPingIssued() {
@@ -84,8 +84,8 @@ object ConnectionUtil {
     @OptIn(UnstableApi::class)
     fun moveStreamToAddressInUse(dataSpec: DataSpec): DataSpec {
         val url = dataSpec.uri.toString()
-        val moved = moveToAddress(url, listOf(Preferences.getLocalAddress(), Preferences.getServer()),
-            Preferences.getInUseServerAddress())
+        val moved = moveToAddress(url, listOf(ServerPreferences.getLocalAddress(), ServerPreferences.getServer()),
+            ServerPreferences.getInUseServerAddress())
         if (moved == url) return dataSpec
 
         Log.d(TAG, "Stream moved onto the in use server address")
@@ -94,7 +94,7 @@ object ConnectionUtil {
 
     @JvmStatic
     fun useServerAddress(address: String?) {
-        Preferences.setInUseServerAddress(address)
+        ServerPreferences.setInUseServerAddress(address)
         App.refreshSubsonicClient()
     }
 }

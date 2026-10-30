@@ -24,10 +24,11 @@ import com.eddyizm.tempus.subsonic.models.PodcastEpisode
 import com.eddyizm.tempus.subsonic.models.ReplayGainInfo
 import com.eddyizm.tempus.util.Constants
 import com.eddyizm.tempus.util.MusicUtil
-import com.eddyizm.tempus.util.Preferences.getImageSize
+import com.eddyizm.tempus.util.UiPreferences.getImageSize
 import com.eddyizm.tempus.util.ReplayGainBundleUtil
 import com.eddyizm.tempus.util.FavoriteRegistry
 import java.util.Date
+import com.eddyizm.tempus.util.UiPreferences
 
 @UnstableApi
 @Keep

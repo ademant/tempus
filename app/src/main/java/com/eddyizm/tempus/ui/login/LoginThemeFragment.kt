@@ -17,7 +17,7 @@ import com.eddyizm.tempus.R
 import com.eddyizm.tempus.databinding.FragmentLoginThemeBinding
 import com.eddyizm.tempus.helper.ThemeHelper
 import com.eddyizm.tempus.ui.activity.MainActivity
-import com.eddyizm.tempus.util.Preferences
+import com.eddyizm.tempus.util.UiPreferences
 import com.eddyizm.tempus.ui.dialog.ColorPickerDialog
 
 private const val ARG_SINGLE_PAGE_MODE = "single_page_mode"
@@ -80,10 +80,10 @@ class LoginThemeFragment : Fragment() {
     }
 
     private fun initDynamicColorsSwitch() {
-        binding.defaultDynamicSwitch.isChecked = Preferences.isDynamicColorAccent()
+        binding.defaultDynamicSwitch.isChecked = UiPreferences.isDynamicColorAccent()
         binding.defaultDynamicSwitch.setOnClickListener {
-            Preferences.setDynamicColorAccent(binding.defaultDynamicSwitch.isChecked)
-            applyAccentColor(Preferences.getColorAccent())
+            UiPreferences.setDynamicColorAccent(binding.defaultDynamicSwitch.isChecked)
+            applyAccentColor(UiPreferences.getColorAccent())
         }
     }
 
@@ -115,18 +115,18 @@ class LoginThemeFragment : Fragment() {
                 if (hasFocus) showAllDropdown()
             }
 
-            val currentIndex = themeValues.indexOf(Preferences.getTheme())
+            val currentIndex = themeValues.indexOf(UiPreferences.getTheme())
             val initialText = if (currentIndex != -1 && currentIndex < themeOptions.size) {
                 themeOptions[currentIndex]
             } else {
-                Preferences.getTheme()
+                UiPreferences.getTheme()
             }
             setText(initialText, false)
 
             setOnItemClickListener { _, _, position, _ ->
                 val selectedValue = themeValues[position]
                 ThemeHelper.applyTheme(selectedValue)
-                Preferences.setTheme(selectedValue)
+                UiPreferences.setTheme(selectedValue)
                 ThemeHelper.enableThemeSwitch(activity as AppCompatActivity)
                 activity?.recreate()
             }
@@ -187,13 +187,13 @@ class LoginThemeFragment : Fragment() {
     }
 
     private fun applyAccentColor(accent: String) {
-        Preferences.setColorAccent(accent)
+        UiPreferences.setColorAccent(accent)
         ThemeHelper.enableThemeSwitch(activity as AppCompatActivity)
         activity?.recreate()
     }
 
     private fun applySavedAccentColorToCard() {
-        val savedColor = Preferences.getColorAccent()
+        val savedColor = UiPreferences.getColorAccent()
         /*
             Remember, DYNAMIC is the default value.
             Actually, we should deprecate it in favor of

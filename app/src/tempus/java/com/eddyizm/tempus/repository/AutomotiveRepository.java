@@ -45,7 +45,7 @@ import com.eddyizm.tempus.subsonic.models.Genre;
 import com.eddyizm.tempus.util.ConstantsAA;
 import com.eddyizm.tempus.util.MappingUtil;
 import com.eddyizm.tempus.util.MusicUtil;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.AutomotivePreferences;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -192,7 +192,7 @@ public class AutomotiveRepository {
                                 MediaItem jumpTo = createFunction(
                                         App.getContext().getString(R.string.aa_starred_albums),
                                         ConstantsAA.JUMP_TO_STARRED_ALBUMS_ID,
-                                        Preferences.isAndroidAutoAlbumViewEnabled(),
+                                        AutomotivePreferences.isAndroidAutoAlbumViewEnabled(),
                                         Uri.parse("android.resource://" + BuildConfig.APPLICATION_ID + "/" + R.drawable.ic_aa_star_album)
                                 );
                                 mediaItems.add(0, jumpTo);
@@ -240,7 +240,7 @@ public class AutomotiveRepository {
                                         MediaItem mediaItem = createArtist(
                                                 artist.getName(),
                                                 prefix + artist.getId(),
-                                                Preferences.isAndroidAutoAlbumViewEnabled(),
+                                                AutomotivePreferences.isAndroidAutoAlbumViewEnabled(),
                                                 artist.getCoverArtId()
                                         );
 
@@ -253,7 +253,7 @@ public class AutomotiveRepository {
                             MediaItem jumpTo = createFunction(
                                     App.getContext().getString(R.string.aa_view_by_albums),
                                     ConstantsAA.ARTISTS_BY_ALBUMS_ID,
-                                    Preferences.isAndroidAutoAlbumViewEnabled(),
+                                    AutomotivePreferences.isAndroidAutoAlbumViewEnabled(),
                                     Uri.parse("android.resource://" + BuildConfig.APPLICATION_ID + "/" + R.drawable.ic_aa_albums)
                             );
                             mediaItems.add(0, jumpTo);
@@ -262,7 +262,7 @@ public class AutomotiveRepository {
                                 jumpTo = createFunction(
                                         App.getContext().getString(R.string.aa_starred_artists),
                                         ConstantsAA.JUMP_TO_STARRED_ARTISTS_ID,
-                                        Preferences.isAndroidAutoAlbumViewEnabled(),
+                                        AutomotivePreferences.isAndroidAutoAlbumViewEnabled(),
                                         Uri.parse("android.resource://" + BuildConfig.APPLICATION_ID + "/" + R.drawable.ic_aa_artists)
                                 );
                                 mediaItems.add(0, jumpTo);
@@ -298,7 +298,7 @@ public class AutomotiveRepository {
 
                             setChildrenMetadata(songs);
 
-                            if( !Preferences.isAndroidAutoShuffleStarredTracksEnabled() ) {
+                            if( !AutomotivePreferences.isAndroidAutoShuffleStarredTracksEnabled() ) {
                                 songs = songs.subList(0, Math.min(ConstantsAA.MAX_ITEMS, songs.size()));
                             }
                             else {
@@ -395,7 +395,7 @@ public class AutomotiveRepository {
                 List<Download> downloads = AppDatabase.getInstance().downloadDao().getAllSync();
 
                 if (downloads != null && !downloads.isEmpty()) {
-                    if( !Preferences.isAndroidAutoShuffleDownloadedTracksEnabled() ) {
+                    if( !AutomotivePreferences.isAndroidAutoShuffleDownloadedTracksEnabled() ) {
                         downloads = downloads.subList(0, Math.min(ConstantsAA.MAX_ITEMS, downloads.size()));
                     }
                     else {
@@ -453,7 +453,7 @@ public class AutomotiveRepository {
                                 MediaItem jumpTo = createFunction(
                                         App.getContext().getString(R.string.aa_albums),
                                         ConstantsAA.JUMP_TO_ALBUMS_ID,
-                                        Preferences.isAndroidAutoAlbumViewEnabled(),
+                                        AutomotivePreferences.isAndroidAutoAlbumViewEnabled(),
                                         Uri.parse("android.resource://" + BuildConfig.APPLICATION_ID + "/" + R.drawable.ic_aa_albums)
                                 );
                                 mediaItems.add(0, jumpTo);
@@ -501,7 +501,7 @@ public class AutomotiveRepository {
                                 MediaItem mediaItem = createArtist(
                                         artist.getName(),
                                         prefix + artist.getId(),
-                                        Preferences.isAndroidAutoAlbumViewEnabled(),
+                                        AutomotivePreferences.isAndroidAutoAlbumViewEnabled(),
                                         artist.getCoverArtId()
                                 );
                                 mediaItems.add(mediaItem);
@@ -510,7 +510,7 @@ public class AutomotiveRepository {
                                 MediaItem jumpTo = createFunction(
                                         App.getContext().getString(R.string.aa_artists),
                                         ConstantsAA.JUMP_TO_ARTISTS_ID,
-                                        Preferences.isAndroidAutoAlbumViewEnabled(),
+                                        AutomotivePreferences.isAndroidAutoAlbumViewEnabled(),
                                         Uri.parse("android.resource://" + BuildConfig.APPLICATION_ID + "/" + R.drawable.ic_aa_artists)
                                 );
                                 mediaItems.add(0, jumpTo);
@@ -1137,7 +1137,7 @@ public class AutomotiveRepository {
                         if (response.isSuccessful() && subsonicResponse != null && subsonicResponse.getPlaylist() != null && subsonicResponse.getPlaylist().getEntries() != null) {
                             List<Child> tracks = response.body().getSubsonicResponse().getPlaylist().getEntries();
 
-                            if( !Preferences.isAndroidAutoShufflePlaylistsEnabled() ) {
+                            if( !AutomotivePreferences.isAndroidAutoShufflePlaylistsEnabled() ) {
                                 tracks = tracks.subList(0, Math.min(ConstantsAA.MAX_ITEMS, tracks.size()));
                             }
                             else {
@@ -1303,7 +1303,7 @@ public class AutomotiveRepository {
                                     MediaItem mediaItem = createArtist(
                                             artist.getName(),
                                             artistPrefix + artist.getId(),
-                                            Preferences.isAndroidAutoAlbumViewEnabled(),
+                                            AutomotivePreferences.isAndroidAutoAlbumViewEnabled(),
                                             artist.getCoverArtId()
                                     );
                                     mediaItems.add(mediaItem);

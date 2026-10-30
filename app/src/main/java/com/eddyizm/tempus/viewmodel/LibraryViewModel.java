@@ -20,7 +20,7 @@ import com.eddyizm.tempus.subsonic.models.Genre;
 import com.eddyizm.tempus.subsonic.models.Indexes;
 import com.eddyizm.tempus.subsonic.models.MusicFolder;
 import com.eddyizm.tempus.subsonic.models.Playlist;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.LibraryPreferences;
 
 import java.util.List;
 import java.util.Objects;
@@ -41,7 +41,7 @@ public class LibraryViewModel extends AndroidViewModel {
     private final MutableLiveData<List<ArtistID3>> sampleArtist = new MutableLiveData<>(null);
     private final MutableLiveData<List<Genre>> sampleGenres = new MutableLiveData<>(null);
 
-    private String cachedMusicFolderId = Preferences.getActiveMusicFolderId();
+    private String cachedMusicFolderId = LibraryPreferences.getActiveMusicFolderId();
     private int musicFolderGeneration = 0;
 
     public LibraryViewModel(@NonNull Application application) {
@@ -59,7 +59,7 @@ public class LibraryViewModel extends AndroidViewModel {
      * they stay.
      */
     public boolean clearCacheIfMusicFolderChanged() {
-        String activeMusicFolderId = Preferences.getActiveMusicFolderId();
+        String activeMusicFolderId = LibraryPreferences.getActiveMusicFolderId();
         if (Objects.equals(activeMusicFolderId, cachedMusicFolderId)) return false;
 
         cachedMusicFolderId = activeMusicFolderId;

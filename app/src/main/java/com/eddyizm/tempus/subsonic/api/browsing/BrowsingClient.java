@@ -5,7 +5,7 @@ import android.util.Log;
 import com.eddyizm.tempus.subsonic.RetrofitClient;
 import com.eddyizm.tempus.subsonic.Subsonic;
 import com.eddyizm.tempus.subsonic.base.ApiResponse;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.LibraryPreferences;
 
 import retrofit2.Call;
 
@@ -42,7 +42,7 @@ public class BrowsingClient {
 
     public Call<ApiResponse> getArtists() {
         Log.d(TAG, "getArtists()");
-        return browsingService.getArtists(subsonic.getParams(), Preferences.getActiveMusicFolderId());
+        return browsingService.getArtists(subsonic.getParams(), LibraryPreferences.getActiveMusicFolderId());
     }
 
     public Call<ApiResponse> getArtist(String id) {

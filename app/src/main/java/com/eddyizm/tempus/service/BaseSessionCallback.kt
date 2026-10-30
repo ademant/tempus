@@ -25,7 +25,7 @@ import com.eddyizm.tempus.R
 import com.eddyizm.tempus.subsonic.base.ApiResponse
 import com.eddyizm.tempus.subsonic.models.ResponseStatus
 import com.eddyizm.tempus.util.Constants
-import com.eddyizm.tempus.util.Preferences
+import com.eddyizm.tempus.util.PlaybackPreferences
 import com.eddyizm.tempus.util.FavoriteRegistry
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
@@ -305,8 +305,8 @@ open class BaseSessionCallback(
             "[shuffleID]",
             "[instantMixID]")
         val tabButton = listOfNotNull(
-            Preferences.getCustomCommandFirstButton(),
-            Preferences.getCustomCommandSecondButton()
+            PlaybackPreferences.getCustomCommandFirstButton(),
+            PlaybackPreferences.getCustomCommandSecondButton()
         ).distinct()
 
         val remainingButtons = allButtons.filter { it !in tabButton }
@@ -450,7 +450,7 @@ open class BaseSessionCallback(
 
         return when (customCommand.customAction) {
             Constants.CUSTOM_COMMAND_INSTANT_MIX_ON -> {
-                if (!MediaManager.continuousPlayIsRunning.get() && Preferences.isInstantMixUsable()) {
+                if (!MediaManager.continuousPlayIsRunning.get() && PlaybackPreferences.isInstantMixUsable()) {
                     Log.d(TAG, "onCustomCommand: start onInstantMix")
                     service.onInstantMix(session) { updateMediaNotificationCustomLayout(session) }
                 }

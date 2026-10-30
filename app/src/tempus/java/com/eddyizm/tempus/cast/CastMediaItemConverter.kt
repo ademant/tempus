@@ -7,7 +7,7 @@ import androidx.media3.cast.MediaItemConverter
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import com.eddyizm.tempus.glide.CustomGlideRequest
-import com.eddyizm.tempus.util.Preferences
+import com.eddyizm.tempus.util.UiPreferences
 import com.google.android.gms.cast.MediaQueueItem
 
 /**
@@ -36,7 +36,7 @@ class CastMediaItemConverter : MediaItemConverter {
         val coverArtId = artwork.lastPathSegment ?: return item
         if (coverArtId.startsWith("rl_") || coverArtId.startsWith("ir_")) return item
 
-        val httpUrl = Uri.parse(CustomGlideRequest.createUrl(coverArtId, Preferences.getImageSize()))
+        val httpUrl = Uri.parse(CustomGlideRequest.createUrl(coverArtId, UiPreferences.getImageSize()))
         return item.buildUpon()
             .setMediaMetadata(item.mediaMetadata.buildUpon().setArtworkUri(httpUrl).build())
             .build()

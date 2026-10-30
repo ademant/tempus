@@ -13,7 +13,7 @@ import com.bumptech.glide.load.engine.cache.InternalCacheDiskCacheFactory;
 import com.bumptech.glide.Registry;
 import com.bumptech.glide.module.AppGlideModule;
 import com.bumptech.glide.request.RequestOptions;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.UiPreferences;
 
 import java.io.InputStream;
 
@@ -21,7 +21,7 @@ import java.io.InputStream;
 public class CustomGlideModule extends AppGlideModule {
     @Override
     public void applyOptions(@NonNull Context context, GlideBuilder builder) {
-        int diskCacheSize = Preferences.getImageCacheSize() * 1024 * 1024;
+        int diskCacheSize = UiPreferences.getImageCacheSize() * 1024 * 1024;
         builder.setDiskCache(new InternalCacheDiskCacheFactory(context, "cache", diskCacheSize));
         builder.setDefaultRequestOptions(new RequestOptions().format(DecodeFormat.PREFER_RGB_565));
     }

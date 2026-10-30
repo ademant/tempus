@@ -5,7 +5,7 @@ import android.util.Log;
 import com.eddyizm.tempus.subsonic.RetrofitClient;
 import com.eddyizm.tempus.subsonic.Subsonic;
 import com.eddyizm.tempus.subsonic.base.ApiResponse;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.LibraryPreferences;
 
 import retrofit2.Call;
 
@@ -27,22 +27,22 @@ public class AlbumSongListClient {
 
     public Call<ApiResponse> getAlbumList2(String type, int size, int offset, Integer fromYear, Integer toYear) {
         Log.d(TAG, "getAlbumList2()");
-        return albumSongListService.getAlbumList2(subsonic.getParams(), type, size, offset, fromYear, toYear, Preferences.getActiveMusicFolderId());
+        return albumSongListService.getAlbumList2(subsonic.getParams(), type, size, offset, fromYear, toYear, LibraryPreferences.getActiveMusicFolderId());
     }
 
     public Call<ApiResponse> getRandomSongs(int size, Integer fromYear, Integer toYear) {
         Log.d(TAG, "getRandomSongs()");
-        return albumSongListService.getRandomSongs(subsonic.getParams(), size, fromYear, toYear, Preferences.getActiveMusicFolderId());
+        return albumSongListService.getRandomSongs(subsonic.getParams(), size, fromYear, toYear, LibraryPreferences.getActiveMusicFolderId());
     }
 
     public Call<ApiResponse> getRandomSongs(int size, Integer fromYear, Integer toYear, String genre) {
         Log.d(TAG, "getRandomSongs()");
-        return albumSongListService.getRandomSongs(subsonic.getParams(), size, fromYear, toYear, genre, Preferences.getActiveMusicFolderId());
+        return albumSongListService.getRandomSongs(subsonic.getParams(), size, fromYear, toYear, genre, LibraryPreferences.getActiveMusicFolderId());
     }
 
     public Call<ApiResponse> getSongsByGenre(String genre, int count, int offset) {
         Log.d(TAG, "getSongsByGenre()");
-        return albumSongListService.getSongsByGenre(subsonic.getParams(), genre, count, offset, Preferences.getActiveMusicFolderId());
+        return albumSongListService.getSongsByGenre(subsonic.getParams(), genre, count, offset, LibraryPreferences.getActiveMusicFolderId());
     }
 
     public Call<ApiResponse> getNowPlaying() {

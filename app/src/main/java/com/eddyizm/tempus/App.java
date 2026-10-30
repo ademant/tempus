@@ -17,6 +17,7 @@ import com.eddyizm.tempus.subsonic.SubsonicPreferences;
 import com.eddyizm.tempus.ui.crash.CrashActivity;
 import com.eddyizm.tempus.util.ClientCertManager;
 import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.ServerPreferences;
 
 import cat.ereza.customactivityoncrash.config.CaocConfig;
 
@@ -90,11 +91,11 @@ public class App extends Application {
     public static Subsonic getSubsonicClientInstance(String serverAddress) {
         return buildSubsonicClient(
                 serverAddress,
-                Preferences.getUser(),
-                Preferences.getPassword(),
-                Preferences.getToken(),
-                Preferences.getSalt(),
-                Preferences.isLowScurity()
+                ServerPreferences.getUser(),
+                ServerPreferences.getPassword(),
+                ServerPreferences.getToken(),
+                ServerPreferences.getSalt(),
+                ServerPreferences.isLowScurity()
         );
     }
 
@@ -146,11 +147,11 @@ public class App extends Application {
 
         if (preferences.getAuthentication() != null) {
             if (preferences.getAuthentication().getPassword() != null)
-                Preferences.setPassword(preferences.getAuthentication().getPassword());
+                ServerPreferences.setPassword(preferences.getAuthentication().getPassword());
             if (preferences.getAuthentication().getToken() != null)
-                Preferences.setToken(preferences.getAuthentication().getToken());
+                ServerPreferences.setToken(preferences.getAuthentication().getToken());
             if (preferences.getAuthentication().getSalt() != null)
-                Preferences.setSalt(preferences.getAuthentication().getSalt());
+                ServerPreferences.setSalt(preferences.getAuthentication().getSalt());
         }
 
         return new Subsonic(preferences);
@@ -158,12 +159,12 @@ public class App extends Application {
 
     @NonNull
     private static SubsonicPreferences getSubsonicPreferences() {
-        String server = Preferences.getInUseServerAddress();
-        String username = Preferences.getUser();
-        String password = Preferences.getPassword();
-        String token = Preferences.getToken();
-        String salt = Preferences.getSalt();
-        boolean isLowSecurity = Preferences.isLowScurity();
+        String server = ServerPreferences.getInUseServerAddress();
+        String username = ServerPreferences.getUser();
+        String password = ServerPreferences.getPassword();
+        String token = ServerPreferences.getToken();
+        String salt = ServerPreferences.getSalt();
+        boolean isLowSecurity = ServerPreferences.isLowScurity();
 
         SubsonicPreferences preferences = new SubsonicPreferences();
         preferences.setServerUrl(server);

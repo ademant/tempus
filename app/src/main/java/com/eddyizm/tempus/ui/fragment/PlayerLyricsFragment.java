@@ -33,7 +33,7 @@ import com.eddyizm.tempus.service.MediaService;
 import com.eddyizm.tempus.subsonic.models.Line;
 import com.eddyizm.tempus.subsonic.models.LyricsList;
 import com.eddyizm.tempus.util.MusicUtil;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.UiPreferences;
 import com.eddyizm.tempus.viewmodel.PlayerBottomSheetViewModel;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.android.material.button.MaterialButton;
@@ -95,7 +95,7 @@ public class PlayerLyricsFragment extends Fragment {
     public void onPause() {
         super.onPause();
         releaseHandler();
-        if (!Preferences.isDisplayAlwaysOn()) {
+        if (!UiPreferences.isDisplayAlwaysOn()) {
             requireActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         }
     }

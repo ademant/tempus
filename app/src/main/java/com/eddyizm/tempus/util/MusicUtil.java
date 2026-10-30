@@ -33,6 +33,11 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import com.eddyizm.tempus.util.DownloadPreferences;
+import com.eddyizm.tempus.util.PlaybackPreferences;
+import com.eddyizm.tempus.util.ServerPreferences;
+import com.eddyizm.tempus.util.StreamingPreferences;
+import com.eddyizm.tempus.util.UiPreferences;
 
 public class MusicUtil {
     private static final String TAG = "MusicUtil";
@@ -66,9 +71,9 @@ public class MusicUtil {
         String selectedBitrate = bitrateFor(transport, selectedFormat);
         Log.i(TAG, "DEBUG: Requesting Format: " + selectedFormat + " at Bitrate: " + selectedBitrate);
 
-        if (!Preferences.isServerPrioritized())
+        if (!ServerPreferences.isServerPrioritized())
             uri.append("&maxBitRate=").append(selectedBitrate);
-        if (!Preferences.isServerPrioritized())
+        if (!ServerPreferences.isServerPrioritized())
             uri.append("&format=").append(selectedFormat);
         if (timeOffset > 0)
             uri.append("&timeOffset=").append(timeOffset);
@@ -104,9 +109,9 @@ public class MusicUtil {
         int transport = getActiveTransport();
         String format = transcodingFormatFor(transport);
 
-        if (!Preferences.isServerPrioritized())
+        if (!ServerPreferences.isServerPrioritized())
             s += "&maxBitRate=" + bitrateFor(transport, format);
-        if (!Preferences.isServerPrioritized())
+        if (!ServerPreferences.isServerPrioritized())
             s += "&format=" + format;
 
         return Uri.parse(s);
@@ -167,9 +172,9 @@ public class MusicUtil {
         if (params.containsKey("c") && params.get("c") != null)
             uri.append("&c=").append(params.get("c"));
 
-        if (!Preferences.isServerPrioritizedInTranscodedDownload())
+        if (!DownloadPreferences.isServerPrioritizedInTranscodedDownload())
             uri.append("&maxBitRate=").append(getBitratePreferenceForDownload());
-        if (!Preferences.isServerPrioritizedInTranscodedDownload())
+        if (!DownloadPreferences.isServerPrioritizedInTranscodedDownload())
             uri.append("&format=").append(getTranscodingFormatPreferenceForDownload());
 
         uri.append("&id=").append(id);
@@ -208,7 +213,7 @@ public class MusicUtil {
     }
 
     public static String getReadableAudioQualityString(Child child) {
-        if (!Preferences.showAudioQuality()) return "";
+        if (!UiPreferences.showAudioQuality()) return "";
 
         Download downloaded = MappingUtil.getCachedDownloads().get(child.getId());
         Child displayChild = downloaded != null ? downloaded : child;
@@ -368,8 +373,8 @@ public class MusicUtil {
     private static String transcodingFormatFor(int transport) {
         if (transport == TRANSPORT_NONE) return "raw";
         if (transport == NetworkCapabilities.TRANSPORT_CELLULAR)
-            return Preferences.getAudioTranscodeFormatMobile();
-        return Preferences.getAudioTranscodeFormatWifi();
+            return StreamingPreferences.getAudioTranscodeFormatMobile();
+        return StreamingPreferences.getAudioTranscodeFormatWifi();
     }
 
     private static String bitrateFor(int transport, String format) {
@@ -377,8 +382,8 @@ public class MusicUtil {
         // transcodingFormatFor already answers with "raw".
         if (format.equals("raw")) return "0";
         if (transport == NetworkCapabilities.TRANSPORT_CELLULAR)
-            return Preferences.getMaxBitrateMobile();
-        return Preferences.getMaxBitrateWifi();
+            return StreamingPreferences.getMaxBitrateMobile();
+        return StreamingPreferences.getMaxBitrateWifi();
     }
 
     public static String getBitratePreference() {
@@ -396,18 +401,18 @@ public class MusicUtil {
         if (audioTranscodeFormat.equals("raw"))
             return "0";
 
-        return Preferences.getBitrateTranscodedDownload();
+        return DownloadPreferences.getBitrateTranscodedDownload();
     }
 
     public static String getTranscodingFormatPreferenceForDownload() {
-        return Preferences.getAudioTranscodeFormatTranscodedDownload();
+        return DownloadPreferences.getAudioTranscodeFormatTranscodedDownload();
     }
 
     // A client transcode leaves the row's inherited Child metadata describing the source rather
     // than the file on disk. Call on any Download row before it is inserted. See issue 502.
     public static void applyTranscodedDownloadMetadata(Download download) {
         if (download == null) return;
-        if (!Preferences.preferTranscodedDownload() || Preferences.isServerPrioritizedInTranscodedDownload())
+        if (!DownloadPreferences.preferTranscodedDownload() || DownloadPreferences.isServerPrioritizedInTranscodedDownload())
             return;
 
         applyTranscodeMetadata(download, getTranscodingFormatPreferenceForDownload(),
@@ -571,7 +576,7 @@ public class MusicUtil {
 
         List<Child> filtered = toFilter
                 .stream()
-                .filter(child -> (child.getUserRating() != null && child.getUserRating() >= Preferences.getMinStarRatingAccepted()) || (child.getUserRating() == null))
+                .filter(child -> (child.getUserRating() != null && child.getUserRating() >= PlaybackPreferences.getMinStarRatingAccepted()) || (child.getUserRating() == null))
                 .collect(Collectors.toList());
 
         toFilter.clear();

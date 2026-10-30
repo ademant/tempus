@@ -21,7 +21,8 @@ import com.bumptech.glide.request.target.CustomTarget;
 import com.bumptech.glide.signature.ObjectKey;
 import com.eddyizm.tempus.App;
 import com.eddyizm.tempus.R;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.UiPreferences;
+import com.eddyizm.tempus.util.StreamingPreferences;
 import com.eddyizm.tempus.util.Util;
 import com.google.android.material.elevation.SurfaceColors;
 
@@ -30,7 +31,7 @@ import java.util.Map;
 public class CustomGlideRequest {
     private static final String TAG = "CustomGlideRequest";
 
-    public static final int CORNER_RADIUS = Preferences.isCornerRoundingEnabled() ? Preferences.getRoundedCornerSize() : 1;
+    public static final int CORNER_RADIUS = UiPreferences.isCornerRoundingEnabled() ? UiPreferences.getRoundedCornerSize() : 1;
 
     public static final DiskCacheStrategy DEFAULT_DISK_CACHE_STRATEGY = DiskCacheStrategy.ALL;
 
@@ -119,7 +120,7 @@ public class CustomGlideRequest {
                 .asBitmap()
                 .load(url)
                 .apply(createRequestOptions(context, coverId, ResourceType.Album));
-        if (Preferences.isDataSavingMode()) {
+        if (StreamingPreferences.isDataSavingMode()) {
             builder = builder.onlyRetrieveFromCache(true);
         }
         builder.into(target);
@@ -133,7 +134,7 @@ public class CustomGlideRequest {
             this.requestManager = Glide.with(context);
 
             if (item != null) {
-                this.item = createUrl(item, Preferences.getImageSize());
+                this.item = createUrl(item, UiPreferences.getImageSize());
             }
 
             requestManager.applyDefaultRequestOptions(createRequestOptions(context, item, type));
@@ -147,7 +148,7 @@ public class CustomGlideRequest {
             RequestBuilder<Drawable> builder = requestManager
                     .load(item)
                     .transition(DrawableTransitionOptions.withCrossFade());
-            if (Preferences.isDataSavingMode()) {
+            if (StreamingPreferences.isDataSavingMode()) {
                 builder = builder.onlyRetrieveFromCache(true);
             }
             return builder;

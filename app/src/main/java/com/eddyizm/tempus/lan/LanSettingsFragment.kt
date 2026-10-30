@@ -23,7 +23,7 @@ import androidx.preference.PreferenceCategory
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreference
 import com.eddyizm.tempus.R
-import com.eddyizm.tempus.util.Preferences
+import com.eddyizm.tempus.util.ServerPreferences
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
@@ -147,7 +147,7 @@ class LanSettingsFragment : PreferenceFragmentCompat() {
 
     private fun requestReceiver() {
         if (receiverStartingAt != 0L) return
-        if (Preferences.getServer().isNullOrBlank()) {
+        if (ServerPreferences.getServer().isNullOrBlank()) {
             showStatus(R.string.lan_login_first)
             return
         }

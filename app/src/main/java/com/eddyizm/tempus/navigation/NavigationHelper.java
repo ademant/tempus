@@ -21,7 +21,7 @@ import androidx.navigation.fragment.NavHostFragment;
 import androidx.navigation.ui.NavigationUI;
 
 import com.eddyizm.tempus.R;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.UiPreferences;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
@@ -118,7 +118,7 @@ public class NavigationHelper {
         int orientation = activity.getResources().getConfiguration().orientation;
         boolean isLandscape = orientation == Configuration.ORIENTATION_LANDSCAPE;
 
-        if (Preferences.getEnableDrawerOnPortrait()) {
+        if (UiPreferences.getEnableDrawerOnPortrait()) {
             setNavigationDrawerLock(false);
             return;
         }

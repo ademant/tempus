@@ -20,7 +20,7 @@ import com.eddyizm.tempus.subsonic.models.Playlist;
 import com.eddyizm.tempus.subsonic.models.PlaylistWithSongs;
 import com.eddyizm.tempus.subsonic.models.SearchResult2;
 import com.eddyizm.tempus.subsonic.models.SearchResult3;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.LibraryPreferences;
 import com.eddyizm.tempus.ui.fragment.SearchFragment;
 
 import java.io.IOException;
@@ -250,7 +250,7 @@ public class SearchingRepository {
 
         @Override
         public void run() {
-            if(Preferences.isSearchSortingChronologicallyEnabled()){
+            if(LibraryPreferences.isSearchSortingChronologicallyEnabled()){
                 recent = recentSearchDao.getRecent();
             }
             else {

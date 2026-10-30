@@ -24,7 +24,7 @@ import androidx.fragment.app.Fragment;
 import com.eddyizm.tempus.R;
 import com.eddyizm.tempus.databinding.FragmentSettingsBinding;
 import com.eddyizm.tempus.ui.activity.MainActivity;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.UiPreferences;
 
 public class SettingsFragment extends Fragment {
 
@@ -87,7 +87,7 @@ public class SettingsFragment extends Fragment {
         activity.setBottomSheetVisibility(true);
         if (isLandscape) {
             activity.setNavigationDrawerLock(false);
-        } else if (Preferences.getEnableDrawerOnPortrait()) {
+        } else if (UiPreferences.getEnableDrawerOnPortrait()) {
             activity.setNavigationDrawerLock(false);
         }
     }

@@ -13,7 +13,7 @@ import com.eddyizm.tempus.R;
 import com.eddyizm.tempus.databinding.DialogDownloadStorageBinding;
 import com.eddyizm.tempus.interfaces.DialogClickCallback;
 import com.eddyizm.tempus.util.DownloadUtil;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.DownloadPreferences;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 @OptIn(markerClass = UnstableApi.class)
@@ -50,11 +50,11 @@ public class DownloadStorageDialog extends DialogFragment {
         if (dialog != null) {
             Button positiveButton = dialog.getButton(Dialog.BUTTON_POSITIVE);
             positiveButton.setOnClickListener(v -> {
-                int currentPreference = Preferences.getDownloadStoragePreference();
+                int currentPreference = DownloadPreferences.getDownloadStoragePreference();
                 int newPreference = 1;
 
                 if (currentPreference != newPreference) {
-                    Preferences.setDownloadStoragePreference(newPreference);
+                    DownloadPreferences.setDownloadStoragePreference(newPreference);
                     DownloadUtil.getDownloadTracker(requireContext()).removeAll();
                     dialogClickCallback.onPositiveClick();
                 }
@@ -64,11 +64,11 @@ public class DownloadStorageDialog extends DialogFragment {
 
             Button negativeButton = dialog.getButton(Dialog.BUTTON_NEGATIVE);
             negativeButton.setOnClickListener(v -> {
-                int currentPreference = Preferences.getDownloadStoragePreference();
+                int currentPreference = DownloadPreferences.getDownloadStoragePreference();
                 int newPreference = 0;
 
                 if (currentPreference != newPreference) {
-                    Preferences.setDownloadStoragePreference(newPreference);
+                    DownloadPreferences.setDownloadStoragePreference(newPreference);
                     DownloadUtil.getDownloadTracker(requireContext()).removeAll();
                     dialogClickCallback.onNegativeClick();
                 }
@@ -78,11 +78,11 @@ public class DownloadStorageDialog extends DialogFragment {
 
             Button neutralButton = dialog.getButton(Dialog.BUTTON_NEUTRAL);
             neutralButton.setOnClickListener(v -> {
-                int currentPreference = Preferences.getDownloadStoragePreference();
+                int currentPreference = DownloadPreferences.getDownloadStoragePreference();
                 int newPreference = 2;
 
                 if (currentPreference != newPreference) {
-                    Preferences.setDownloadStoragePreference(newPreference);
+                    DownloadPreferences.setDownloadStoragePreference(newPreference);
                     DownloadUtil.getDownloadTracker(requireContext()).removeAll();
                     dialogClickCallback.onNeutralClick();
                 }

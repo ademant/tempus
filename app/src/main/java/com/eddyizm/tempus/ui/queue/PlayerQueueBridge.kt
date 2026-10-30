@@ -33,7 +33,7 @@ import com.eddyizm.tempus.util.DownloadUtil
 import com.eddyizm.tempus.util.ExternalAudioReader
 import com.eddyizm.tempus.util.ExternalAudioWriter
 import com.eddyizm.tempus.util.MappingUtil
-import com.eddyizm.tempus.util.Preferences
+import com.eddyizm.tempus.util.DownloadPreferences
 import com.eddyizm.tempus.viewmodel.PlaybackViewModel
 import com.eddyizm.tempus.viewmodel.PlayerBottomSheetViewModel
 import kotlinx.coroutines.Dispatchers
@@ -347,7 +347,7 @@ class PlayerQueueBridge @JvmOverloads constructor(
         }
         fragment.viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             var count = 0
-            if (Preferences.getDownloadDirectoryUri() == null) {
+            if (DownloadPreferences.getDownloadDirectoryUri() == null) {
                 val dm = DownloadUtil.getDownloadTracker(context)
                 if (dm != null) {
                     val validItems = mutableListOf<androidx.media3.common.MediaItem>()
@@ -401,7 +401,7 @@ class PlayerQueueBridge @JvmOverloads constructor(
     }
 
     private fun loadSavedQueue() {
-        if (!Preferences.isSyncronizationEnabled()) return
+        if (!DownloadPreferences.isSyncronizationEnabled()) return
         val context = fragment.context ?: return
         val liveData = playerBottomSheetViewModel.playQueue
         val observer = object : Observer<PlayQueue?> {

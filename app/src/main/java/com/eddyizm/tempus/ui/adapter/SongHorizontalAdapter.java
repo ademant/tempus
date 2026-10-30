@@ -31,7 +31,8 @@ import com.eddyizm.tempus.util.DownloadUtil;
 import com.eddyizm.tempus.util.ExternalAudioReader;
 import com.eddyizm.tempus.util.MappingUtil;
 import com.eddyizm.tempus.util.MusicUtil;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.UiPreferences;
+import com.eddyizm.tempus.util.DownloadPreferences;
 import com.eddyizm.tempus.util.FavoriteRegistry;
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -156,7 +157,7 @@ public class SongHorizontalAdapter extends RecyclerView.Adapter<SongHorizontalAd
 
         holder.item.trackNumberTextView.setText(MusicUtil.getReadableTrackNumber(holder.itemView.getContext(), song.getTrack()));
 
-        if (Preferences.getDownloadDirectoryUri() == null) {
+        if (DownloadPreferences.getDownloadDirectoryUri() == null) {
             if (DownloadUtil.getDownloadTracker(holder.itemView.getContext()).isDownloaded(song.getId())) {
                 holder.item.searchResultDownloadIndicatorImageView.setVisibility(View.VISIBLE);
             } else {
@@ -208,7 +209,7 @@ public class SongHorizontalAdapter extends RecyclerView.Adapter<SongHorizontalAd
             holder.item.differentDiskDividerSector.setVisibility(View.GONE);
         }
 
-        if (Preferences.showItemRating()) {
+        if (UiPreferences.showItemRating()) {
             boolean isStarred = FavoriteRegistry.resolve(FavoriteRegistry.Kind.SONG, song.getId(), song.getStarred() != null);
             holder.item.ratingIndicatorImageView.setVisibility(isStarred || song.getUserRating() != null ? View.VISIBLE : View.GONE);
 
@@ -230,7 +231,7 @@ public class SongHorizontalAdapter extends RecyclerView.Adapter<SongHorizontalAd
     }
 
     private void handleExternalAudioRefresh() {
-        if (Preferences.getDownloadDirectoryUri() != null) {
+        if (DownloadPreferences.getDownloadDirectoryUri() != null) {
             notifyDataSetChanged();
         }
     }

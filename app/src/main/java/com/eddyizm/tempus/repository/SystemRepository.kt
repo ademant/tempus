@@ -9,7 +9,7 @@ import com.eddyizm.tempus.subsonic.await
 import com.eddyizm.tempus.subsonic.models.OpenSubsonicExtension
 import com.eddyizm.tempus.subsonic.models.ResponseStatus
 import com.eddyizm.tempus.subsonic.models.SubsonicResponse
-import com.eddyizm.tempus.util.Preferences
+import com.eddyizm.tempus.util.ServerPreferences
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -68,7 +68,7 @@ class SystemRepository {
     fun ping(): MutableLiveData<SubsonicResponse?> = ping(App.getSubsonicClientInstance(false))
 
     fun pingLocalAddress(): MutableLiveData<SubsonicResponse?> =
-        ping(App.getSubsonicClientInstance(Preferences.getLocalAddress()))
+        ping(App.getSubsonicClientInstance(ServerPreferences.getLocalAddress()))
 
     private fun ping(client: Subsonic): MutableLiveData<SubsonicResponse?> {
         val pingResult = MutableLiveData<SubsonicResponse?>()

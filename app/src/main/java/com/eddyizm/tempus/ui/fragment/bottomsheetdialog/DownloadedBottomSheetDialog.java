@@ -26,7 +26,7 @@ import com.eddyizm.tempus.util.DownloadUtil;
 import com.eddyizm.tempus.util.MappingUtil;
 import com.eddyizm.tempus.util.MusicUtil;
 import com.eddyizm.tempus.util.ExternalAudioReader;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.DownloadPreferences;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -126,7 +126,7 @@ public class DownloadedBottomSheetDialog extends BottomSheetDialogFragment imple
 
         TextView removeAll = view.findViewById(R.id.remove_all_text_view);
         removeAll.setOnClickListener(v -> {
-            if (Preferences.getDownloadDirectoryUri() == null) {
+            if (DownloadPreferences.getDownloadDirectoryUri() == null) {
                 List<MediaItem> mediaItems = MappingUtil.mapDownloads(songs);
                 List<Download> downloads = songs.stream().map(Download::new).collect(Collectors.toList());
                 DownloadUtil.getDownloadTracker(requireContext()).remove(mediaItems, downloads);

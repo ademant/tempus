@@ -26,7 +26,7 @@ import com.eddyizm.tempus.util.Constants.SeedType;
 import com.eddyizm.tempus.util.DownloadUtil;
 import com.eddyizm.tempus.util.MappingUtil;
 import com.eddyizm.tempus.util.NetworkUtil;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.DownloadPreferences;
 import com.eddyizm.tempus.util.FavoriteRegistry;
 
 import java.util.Collections;
@@ -110,7 +110,7 @@ public class SongBottomSheetViewModel extends AndroidViewModel {
 
         media.setStarred(new Date());
 
-        if (Preferences.isStarredSyncEnabled() && Preferences.getDownloadDirectoryUri() == null) {
+        if (DownloadPreferences.isStarredSyncEnabled() && DownloadPreferences.getDownloadDirectoryUri() == null) {
             DownloadUtil.getDownloadTracker(context).download(
                     MappingUtil.mapDownload(media),
                     new Download(media)

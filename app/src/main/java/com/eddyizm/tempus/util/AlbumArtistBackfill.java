@@ -19,6 +19,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import retrofit2.Response;
+import com.eddyizm.tempus.util.LibraryPreferences;
+import com.eddyizm.tempus.util.ServerPreferences;
 
 /**
  * Fills in the album artist for downloads that were stored before the app kept one. An album id is
@@ -65,12 +67,12 @@ public class AlbumArtistBackfill {
         // Not in backfillIfNeeded: reaching this opens the database, and that caller is the main thread.
         int schemaVersion = AppDatabase.getInstance().getOpenHelper().getReadableDatabase().getVersion();
 
-        if (Preferences.getBackfilledAlbumArtistVersion() == schemaVersion) return;
+        if (LibraryPreferences.getBackfilledAlbumArtistVersion() == schemaVersion) return;
 
         // Zeroed before the stamp moves, so a write that only half lands gives extra passes and never fewer.
-        if (Preferences.getAlbumArtistAttemptsVersion() != schemaVersion) {
-            Preferences.setAlbumArtistAttempts(0);
-            Preferences.setAlbumArtistAttemptsVersion(schemaVersion);
+        if (LibraryPreferences.getAlbumArtistAttemptsVersion() != schemaVersion) {
+            LibraryPreferences.setAlbumArtistAttempts(0);
+            LibraryPreferences.setAlbumArtistAttemptsVersion(schemaVersion);
         }
 
         if (!isUserAuthenticated()) return;
@@ -154,13 +156,13 @@ public class AlbumArtistBackfill {
                 || !downloadDao.getAlbumIdsWithoutAlbumArtist().isEmpty();
 
         if (unfinished) {
-            int attempts = Preferences.getAlbumArtistAttempts() + 1;
-            Preferences.setAlbumArtistAttempts(attempts);
+            int attempts = LibraryPreferences.getAlbumArtistAttempts() + 1;
+            LibraryPreferences.setAlbumArtistAttempts(attempts);
 
             if (attempts < MAX_ATTEMPTS) return;
         }
 
-        Preferences.setAlbumArtistBackfilled(schemaVersion);
+        LibraryPreferences.setAlbumArtistBackfilled(schemaVersion);
     }
 
     /** Only where it is still missing, so a download made during the pass keeps what it arrived with. */
@@ -258,7 +260,7 @@ public class AlbumArtistBackfill {
     }
 
     private static boolean isUserAuthenticated() {
-        return Preferences.getPassword() != null
-                || (Preferences.getToken() != null && Preferences.getSalt() != null);
+        return ServerPreferences.getPassword() != null
+                || (ServerPreferences.getToken() != null && ServerPreferences.getSalt() != null);
     }
 }

@@ -12,7 +12,7 @@ import androidx.media3.common.util.UnstableApi;
 import com.eddyizm.tempus.R;
 import com.eddyizm.tempus.databinding.DialogStreamingCacheStorageBinding;
 import com.eddyizm.tempus.interfaces.DialogClickCallback;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.StreamingPreferences;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 @OptIn(markerClass = UnstableApi.class)
@@ -48,11 +48,11 @@ public class StreamingCacheStorageDialog extends DialogFragment {
         if (dialog != null) {
             Button positiveButton = dialog.getButton(Dialog.BUTTON_POSITIVE);
             positiveButton.setOnClickListener(v -> {
-                int currentPreference = Preferences.getStreamingCacheStoragePreference();
+                int currentPreference = StreamingPreferences.getStreamingCacheStoragePreference();
                 int newPreference = 1;
 
                 if (currentPreference != newPreference) {
-                    Preferences.setStreamingCacheStoragePreference(newPreference);
+                    StreamingPreferences.setStreamingCacheStoragePreference(newPreference);
                     dialogClickCallback.onPositiveClick();
                 }
 
@@ -61,11 +61,11 @@ public class StreamingCacheStorageDialog extends DialogFragment {
 
             Button negativeButton = dialog.getButton(Dialog.BUTTON_NEGATIVE);
             negativeButton.setOnClickListener(v -> {
-                int currentPreference = Preferences.getStreamingCacheStoragePreference();
+                int currentPreference = StreamingPreferences.getStreamingCacheStoragePreference();
                 int newPreference = 0;
 
                 if (currentPreference != newPreference) {
-                    Preferences.setStreamingCacheStoragePreference(newPreference);
+                    StreamingPreferences.setStreamingCacheStoragePreference(newPreference);
                     dialogClickCallback.onNegativeClick();
                 }
 

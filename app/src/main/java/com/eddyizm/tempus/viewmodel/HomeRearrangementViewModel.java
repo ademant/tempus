@@ -8,7 +8,7 @@ import androidx.lifecycle.AndroidViewModel;
 import com.eddyizm.tempus.R;
 import com.eddyizm.tempus.model.HomeSector;
 import com.eddyizm.tempus.util.Constants;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.UiPreferences;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 
@@ -25,9 +25,9 @@ public class HomeRearrangementViewModel extends AndroidViewModel {
     public List<HomeSector> getHomeSectorList() {
         if (sectors != null && !sectors.isEmpty()) return sectors;
 
-        if (Preferences.getHomeSectorList() != null && !Preferences.getHomeSectorList().equals("null")) {
+        if (UiPreferences.getHomeSectorList() != null && !UiPreferences.getHomeSectorList().equals("null")) {
             sectors = new Gson().fromJson(
-                    Preferences.getHomeSectorList(),
+                    UiPreferences.getHomeSectorList(),
                     new TypeToken<List<HomeSector>>() {
                     }.getType()
             );
@@ -43,11 +43,11 @@ public class HomeRearrangementViewModel extends AndroidViewModel {
     }
 
     public void saveHomeSectorList(List<HomeSector> sectors) {
-        Preferences.setHomeSectorList(sectors);
+        UiPreferences.setHomeSectorList(sectors);
     }
 
     public void resetHomeSectorList() {
-        Preferences.setHomeSectorList(null);
+        UiPreferences.setHomeSectorList(null);
     }
 
     public void closeDialog() {

@@ -25,7 +25,7 @@ import com.eddyizm.tempus.subsonic.models.Child;
 import com.eddyizm.tempus.util.DownloadUtil;
 import com.eddyizm.tempus.util.MappingUtil;
 import com.eddyizm.tempus.util.NetworkUtil;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.DownloadPreferences;
 import com.eddyizm.tempus.util.FavoriteRegistry;
 
 import java.util.Collections;
@@ -191,7 +191,7 @@ public class ArtistPageViewModel extends AndroidViewModel {
 
         artist.setStarred(new Date());
 
-        if (Preferences.isStarredArtistsSyncEnabled()) {
+        if (DownloadPreferences.isStarredArtistsSyncEnabled()) {
             artistRepository.getArtistAllSongs(artist.getId(), new ArtistRepository.ArtistSongsCallback() {
                 @OptIn(markerClass = UnstableApi.class)
                 @Override

@@ -36,7 +36,8 @@ import com.eddyizm.tempus.util.Constants;
 import com.eddyizm.tempus.util.DownloadUtil;
 import com.eddyizm.tempus.util.MappingUtil;
 import com.eddyizm.tempus.util.MusicUtil;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.ServerPreferences;
+import com.eddyizm.tempus.util.DownloadPreferences;
 import com.eddyizm.tempus.util.ExternalAudioWriter;
 import com.eddyizm.tempus.util.ExternalAudioReader;
 import com.eddyizm.tempus.viewmodel.AlbumBottomSheetViewModel;
@@ -195,7 +196,7 @@ public class AlbumBottomSheetDialog extends BottomSheetDialogFragment implements
             List<Download> downloads = songs.stream().map(Download::new).collect(Collectors.toList());
 
             downloadAll.setOnClickListener(v -> {
-                if (Preferences.getDownloadDirectoryUri() == null) {
+                if (DownloadPreferences.getDownloadDirectoryUri() == null) {
                     DownloadUtil.getDownloadTracker(requireContext()).download(mediaItems, downloads);
                 } else {
                     songs.forEach(child -> ExternalAudioWriter.downloadToUserDirectory(requireContext(), child));
@@ -222,7 +223,7 @@ public class AlbumBottomSheetDialog extends BottomSheetDialogFragment implements
             currentAlbumMediaItems = MappingUtil.mapDownloads(currentAlbumTracks);
 
             removeAllTextView.setOnClickListener(v -> {
-                if (Preferences.getDownloadDirectoryUri() == null) {
+                if (DownloadPreferences.getDownloadDirectoryUri() == null) {
                     List<Download> downloads = currentAlbumTracks.stream().map(Download::new).collect(Collectors.toList());
                     DownloadUtil.getDownloadTracker(requireContext()).remove(currentAlbumMediaItems, downloads);
                 } else {
@@ -260,7 +261,7 @@ public class AlbumBottomSheetDialog extends BottomSheetDialogFragment implements
             }
         }));
 
-        share.setVisibility(Preferences.isSharingEnabled() ? View.VISIBLE : View.GONE);
+        share.setVisibility(ServerPreferences.isSharingEnabled() ? View.VISIBLE : View.GONE);
     }
 
     @Override
@@ -282,7 +283,7 @@ public class AlbumBottomSheetDialog extends BottomSheetDialogFragment implements
             return;
         }
 
-        if (Preferences.getDownloadDirectoryUri() == null) {
+        if (DownloadPreferences.getDownloadDirectoryUri() == null) {
             List<MediaItem> mediaItems = currentAlbumMediaItems;
             if (mediaItems == null || mediaItems.isEmpty()) {
                 removeAllTextView.setVisibility(View.GONE);

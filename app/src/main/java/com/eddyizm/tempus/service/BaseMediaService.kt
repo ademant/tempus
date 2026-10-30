@@ -67,6 +67,10 @@ import kotlin.random.Random
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import com.eddyizm.tempus.util.DownloadPreferences
+import com.eddyizm.tempus.util.PlaybackPreferences
+import com.eddyizm.tempus.util.ServerPreferences
+import com.eddyizm.tempus.util.StreamingPreferences
 
 private const val TAG = "BaseMediaService"
 
@@ -283,7 +287,7 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
                 Thread.sleep(25)
             }
 
-            val addressWhenMapped = Preferences.getInUseServerAddress()
+            val addressWhenMapped = ServerPreferences.getInUseServerAddress()
             val queueRepository = QueueRepository()
             val storedQueue = queueRepository.media
             if (storedQueue.isNullOrEmpty()) return@Thread
@@ -313,7 +317,7 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
                 // the mediaItemCount check below cannot detect a released player, so bail first.
                 if (serviceDestroyed) return@post
                 if (player.mediaItemCount > 0) return@post
-                if (addressWhenMapped != Preferences.getInUseServerAddress()) {
+                if (addressWhenMapped != ServerPreferences.getInUseServerAddress()) {
                     restorePlayerFromQueue(player)
                     return@post
                 }
@@ -452,7 +456,7 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
                         ?: false
 
                     if (player.nextMediaItemIndex == C.INDEX_UNSET) {
-                        if (!handled && Preferences.isContinuousPlayEnabled()) {
+                        if (!handled && PlaybackPreferences.isContinuousPlayEnabled()) {
                             MediaManager.continuousPlay(currentMediaItem, this@BaseMediaService)
                         }
                     }
@@ -671,11 +675,11 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
             }
 
             override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
-                Preferences.setShuffleModeEnabled(shuffleModeEnabled)
+                PlaybackPreferences.setShuffleModeEnabled(shuffleModeEnabled)
             }
 
             override fun onRepeatModeChanged(repeatMode: Int) {
-                Preferences.setRepeatMode(repeatMode)
+                PlaybackPreferences.setRepeatMode(repeatMode)
             }
 
             override fun onAudioSessionIdChanged(audioSessionId: Int) {
@@ -786,7 +790,7 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
     }
 
     private fun applyUpnpSwitch() {
-        when (UpnpRoutesGate.change(Preferences.isUpnpEnabled(), upnpRouteProvider != null)) {
+        when (UpnpRoutesGate.change(ServerPreferences.isUpnpEnabled(), upnpRouteProvider != null)) {
             UpnpRoutesGate.Change.REGISTER -> initializeUpnpRoutes()
             UpnpRoutesGate.Change.RELEASE -> {
                 // Bring playback home first, or the renderer keeps playing with nothing left to control it.
@@ -891,26 +895,26 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
             .setLoadControl(initializeLoadControl())
             .build()
 
-        exoplayer.shuffleModeEnabled = Preferences.isShuffleModeEnabled()
-        exoplayer.repeatMode = Preferences.getRepeatMode()
-        exoplayer.playbackParameters = getPlaybackParameters(Preferences.getPlaybackSpeed())
+        exoplayer.shuffleModeEnabled = PlaybackPreferences.isShuffleModeEnabled()
+        exoplayer.repeatMode = PlaybackPreferences.getRepeatMode()
+        exoplayer.playbackParameters = getPlaybackParameters(PlaybackPreferences.getPlaybackSpeed())
     }
 
     private fun getPlaybackParameters(speed: Float): PlaybackParameters {
-        val pitch = if (Preferences.isPlaybackSpeedPitchEnabled()) getAdjustedPitch(speed) else 1.0f
+        val pitch = if (PlaybackPreferences.isPlaybackSpeedPitchEnabled()) getAdjustedPitch(speed) else 1.0f
         return PlaybackParameters(speed, pitch)
     }
 
     private fun getAdjustedPitch(speed: Float): Float {
-        return if (Preferences.isPlaybackSpeedManualPitchEnabled()) {
-            Preferences.getPlaybackSpeedManualPitch()
+        return if (PlaybackPreferences.isPlaybackSpeedManualPitchEnabled()) {
+            PlaybackPreferences.getPlaybackSpeedManualPitch()
         } else {
             speed
         }
     }
 
     private fun buildBackend(): EqualizerBackend =
-        when (Preferences.getSelectedEqualizer()) {
+        when (PlaybackPreferences.getSelectedEqualizer()) {
             1 -> BuiltinBackend()
             2 -> ExternalBackend()
             3 -> ParametricBackend(parametricEqProcessor)
@@ -963,7 +967,7 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
     }
 
     private fun initializeLoadControl(): DefaultLoadControl {
-        val preloadSec = Preferences.getSongPreloadBuffer().toLong()
+        val preloadSec = StreamingPreferences.getSongPreloadBuffer().toLong()
         val preloadMs = TimeUnit.SECONDS.toMillis(preloadSec).toInt()
         return DefaultLoadControl.Builder()
             .setBufferDurationsMs(
@@ -1016,7 +1020,7 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
 
     private fun scheduleQueueSync() {
         queueSyncHandler.removeCallbacks(queueSyncRunnable)
-        val blocked = !Preferences.isSyncronizationEnabled()
+        val blocked = !DownloadPreferences.isSyncronizationEnabled()
         if (blocked) return
         if (!hasPlayedSinceRestore) return
         queueSyncHandler.postDelayed(queueSyncRunnable, QUEUE_SYNC_DEBOUNCE_MS)
@@ -1218,11 +1222,11 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
         private var lastNetwork: Network? = null
 
         private fun recheckAddress(network: Network, transport: Int, networkChanged: Boolean) {
-            val server = Preferences.getServer()
-            val local = Preferences.getLocalAddress()
+            val server = ServerPreferences.getServer()
+            val local = ServerPreferences.getLocalAddress()
             if (server.isNullOrEmpty() || local.isNullOrEmpty() || server == local || ConnectionUtil.isPingDeferred()) return
 
-            val onLocal = Preferences.isInUseServerAddressLocal()
+            val onLocal = ServerPreferences.isInUseServerAddressLocal()
             App.getSubsonicClientInstance(local).systemClient.ping().enqueue(object : Callback<ApiResponse> {
                 override fun onResponse(call: Call<ApiResponse>, response: Response<ApiResponse>) {
                     onPinged(response.isSuccessful && response.body() != null)
@@ -1248,12 +1252,12 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
             widgetUpdateHandler.post {
                 if (serviceDestroyed || network != lastNetwork || transport != lastTransport ||
                     !CacheUtil.isConnected() || ConnectionUtil.isPingDeferred() ||
-                    Preferences.getServer() != server || Preferences.getLocalAddress() != local) return@post
+                    ServerPreferences.getServer() != server || ServerPreferences.getLocalAddress() != local) return@post
 
-                if (needsSwitch && Preferences.isInUseServerAddressLocal() == fromLocal) {
+                if (needsSwitch && ServerPreferences.isInUseServerAddressLocal() == fromLocal) {
                     if (fromLocal) {
                         Log.d(TAG, "Local server address unreachable, switching")
-                        Preferences.setServerSwitchableTimer()
+                        ServerPreferences.setServerSwitchableTimer()
                         ConnectionUtil.useServerAddress(server)
                     } else {
                         Log.d(TAG, "Local server address answered, switching")

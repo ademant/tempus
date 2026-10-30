@@ -18,10 +18,11 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import com.eddyizm.tempus.R
 import com.eddyizm.tempus.util.ConstantsAA
-import com.eddyizm.tempus.util.Preferences
+import com.eddyizm.tempus.util.ServerPreferences
+import com.eddyizm.tempus.util.AutomotivePreferences
 import androidx.core.net.toUri
 import androidx.media3.session.SessionError
-import com.eddyizm.tempus.util.Preferences.getServerId
+import com.eddyizm.tempus.util.ServerPreferences.getServerId
 
 @UnstableApi
 object MediaBrowserTree {
@@ -122,11 +123,11 @@ object MediaBrowserTree {
     }
 
     fun buildTree() {
-        val albumView: Boolean = Preferences.isAndroidAutoAlbumViewEnabled()
-        val homeView: Boolean = Preferences.isAndroidAutoHomeViewEnabled()
-        val playlistView: Boolean = Preferences.isAndroidAutoPlaylistViewEnabled()
-        val podcastView: Boolean = Preferences.isAndroidAutoPodcastViewEnabled()
-        val radioView: Boolean = Preferences.isAndroidAutoRadioViewEnabled()
+        val albumView: Boolean = AutomotivePreferences.isAndroidAutoAlbumViewEnabled()
+        val homeView: Boolean = AutomotivePreferences.isAndroidAutoHomeViewEnabled()
+        val playlistView: Boolean = AutomotivePreferences.isAndroidAutoPlaylistViewEnabled()
+        val podcastView: Boolean = AutomotivePreferences.isAndroidAutoPodcastViewEnabled()
+        val radioView: Boolean = AutomotivePreferences.isAndroidAutoRadioViewEnabled()
 
         // clear before rebuild
         treeNodes.clear()
@@ -160,10 +161,10 @@ object MediaBrowserTree {
         }
 
         val tabIndex = listOf(
-            indexGuard(Preferences.getAndroidAutoFirstTab(), Preferences::resetAndroidAutoFirstTab),
-            indexGuard(Preferences.getAndroidAutoSecondTab(), Preferences::resetAndroidAutoSecondTab),
-            indexGuard(Preferences.getAndroidAutoThirdTab(), Preferences::resetAndroidAutoThirdTab),
-            indexGuard(Preferences.getAndroidAutoFourthTab(), Preferences::resetAndroidAutoFourthTab)
+            indexGuard(AutomotivePreferences.getAndroidAutoFirstTab(), AutomotivePreferences::resetAndroidAutoFirstTab),
+            indexGuard(AutomotivePreferences.getAndroidAutoSecondTab(), AutomotivePreferences::resetAndroidAutoSecondTab),
+            indexGuard(AutomotivePreferences.getAndroidAutoThirdTab(), AutomotivePreferences::resetAndroidAutoThirdTab),
+            indexGuard(AutomotivePreferences.getAndroidAutoFourthTab(), AutomotivePreferences::resetAndroidAutoFourthTab)
         )
 
         // Root level
@@ -652,7 +653,7 @@ object MediaBrowserTree {
 
             else -> {
                 if (id.startsWith(ConstantsAA.GENRES_ID)) {
-                    val shuffle = Preferences.isAndroidAutoShuffleGenreSongsEnabled()
+                    val shuffle = AutomotivePreferences.isAndroidAutoShuffleGenreSongsEnabled()
                     // If the user doesn't want random songs, it's likely it's for perusing them, so provide as many as possible
                     val count = if (shuffle) ConstantsAA.MAX_SHUFFLE_ITEMS else ConstantsAA.MAX_ITEMS
                     return automotiveRepository.getSongsByGenre(id.removePrefix(ConstantsAA.GENRES_ID), count, shuffle)

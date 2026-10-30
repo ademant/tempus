@@ -37,7 +37,7 @@ class StreamingCacheKeyFactory : CacheKeyFactory {
         val bitrate = uri.getQueryParameter("maxBitRate").orEmpty()
         val format = uri.getQueryParameter("format").orEmpty()
         val timeOffset = uri.getQueryParameter("timeOffset").orEmpty()
-        val server = Preferences.getServerId().orEmpty()
+        val server = ServerPreferences.getServerId().orEmpty()
 
         return "$server|$id|$bitrate|$format|$timeOffset"
     }

@@ -36,7 +36,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.eddyizm.tempus.R
 import com.eddyizm.tempus.subsonic.models.Child
-import com.eddyizm.tempus.util.Preferences
+import com.eddyizm.tempus.util.UiPreferences
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableLazyListState
 
@@ -76,14 +76,14 @@ fun PlayerQueueList(
     val density = LocalDensity.current
     val cornerRadius = remember(density) {
         with(density) {
-            if (Preferences.isCornerRoundingEnabled()) {
-                Preferences.getRoundedCornerSize().toDp()
+            if (UiPreferences.isCornerRoundingEnabled()) {
+                UiPreferences.getRoundedCornerSize().toDp()
             } else {
                 1.toDp()
             }
         }
     }
-    val showRating = Preferences.showItemRating()
+    val showRating = UiPreferences.showItemRating()
 
     if (items.isEmpty()) {
         Box(

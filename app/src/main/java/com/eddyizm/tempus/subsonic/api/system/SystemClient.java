@@ -6,7 +6,7 @@ import com.eddyizm.tempus.subsonic.RetrofitClient;
 import com.eddyizm.tempus.subsonic.Subsonic;
 import com.eddyizm.tempus.subsonic.base.ApiResponse;
 import com.eddyizm.tempus.util.ConnectionUtil;
-import com.eddyizm.tempus.util.Preferences;
+import com.eddyizm.tempus.util.ServerPreferences;
 
 import java.util.concurrent.TimeUnit;
 
@@ -25,12 +25,12 @@ public class SystemClient {
 
     public Call<ApiResponse> ping() {
         Log.d(TAG, "ping()");
-        int timeoutSeconds = Preferences.getNetworkPingTimeout();
+        int timeoutSeconds = ServerPreferences.getNetworkPingTimeout();
         Call<ApiResponse> pingCall = systemService.ping(subsonic.getParams());
         // Keyed to the address this client points at, since a probe runs on its own client while
         // the in use address is still the public one.
         boolean pingingLocalAddress = ConnectionUtil.isUnderAddress(
-                subsonic.getUrl(), Preferences.getLocalAddress());
+                subsonic.getUrl(), ServerPreferences.getLocalAddress());
 
         if (pingingLocalAddress) {
             pingCall.timeout()
