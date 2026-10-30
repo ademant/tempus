@@ -1166,7 +1166,7 @@ public class HomeTabMusicFragment extends Fragment implements ClickCallback {
     }
 
     private void initHomeReorganizer() {
-        final Handler handler = new Handler();
+        final Handler handler = new Handler(Looper.getMainLooper());
         final Runnable runnable = () -> {
             if (bind != null) bind.homeSectorRearrangementButton.setVisibility(View.VISIBLE);
         };
@@ -1179,7 +1179,7 @@ public class HomeTabMusicFragment extends Fragment implements ClickCallback {
     }
 
     private void refreshSharesView() {
-        final Handler handler = new Handler();
+        final Handler handler = new Handler(Looper.getMainLooper());
         final Runnable runnable = () -> {
             if (getView() != null && bind != null && Preferences.isSharingEnabled()) {
                 homeViewModel.refreshShares(getViewLifecycleOwner());
@@ -1353,7 +1353,7 @@ public class HomeTabMusicFragment extends Fragment implements ClickCallback {
     }
 
     private void refreshPlaylistView() {
-        final Handler handler = new Handler();
+        final Handler handler = new Handler(Looper.getMainLooper());
 
         final Runnable runnable = () -> {
             if (getView() != null && bind != null && homeViewModel != null)
