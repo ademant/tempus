@@ -259,19 +259,13 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
                 if (w < req.insertPos || w >= req.insertPos + req.count) base.add(w)
                 w = timeline.getNextWindowIndex(w, Player.REPEAT_MODE_OFF, true)
             }
-            val curPos = base.indexOf(current)
-            if (curPos < 0) {
+            val newOrder = PlayNextOrder.splice(base, current, req.insertPos, req.count)
+            if (newOrder == null) {
                 playNextQueue.removeFirst()
                 continue
             }
-
-            val newOrder = ArrayList<Int>(req.target)
-            newOrder.addAll(base)
-            for (j in 0 until req.count) {
-                newOrder.add(curPos + 1 + j, req.insertPos + j)
-            }
             player.shuffleOrder = DefaultShuffleOrder(newOrder.toIntArray(), Random.nextLong())
-            Log.d(TAG, "playNextFixup: ${req.count} item(s) moved to shuffle position ${curPos + 1}")
+            Log.d(TAG, "playNextFixup: ${req.count} item(s) moved after the current shuffle position")
             playNextQueue.removeFirst()
         }
     }
@@ -349,18 +343,13 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
                 // failure (bad URL, auth) can't spin in an endless prepare loop.
                 Log.w(TAG, "onPlayerError: ${error.errorCodeName}", error)
 
-                val recoverable = when (error.errorCode) {
-                    PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
-                    PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
-                    PlaybackException.ERROR_CODE_IO_UNSPECIFIED -> true
-                    else -> false
-                }
+                val recoverable = PlayerErrorPolicy.isRecoverable(error.errorCode)
                 val now = android.os.SystemClock.elapsedRealtime()
                 restartableUntilMs = now + restartAfterErrorWindowMs
                 if (!recoverable) return
                 networkCallback.recheckAfterPlayerError()
 
-                if (!stoppedSinceError && now - lastPlayerErrorRecoveryMs >= playerErrorRecoveryThrottleMs) {
+                if (PlayerErrorPolicy.shouldReprepare(now, lastPlayerErrorRecoveryMs, playerErrorRecoveryThrottleMs, stoppedSinceError)) {
                     lastPlayerErrorRecoveryMs = now
                     player.prepare()
                 }
@@ -552,12 +541,7 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
                 }
 
                 // Format for notification/player: Title = "Artist - Song", Artist = "Station Name"
-                val formattedTitle = when {
-                    !artist.isNullOrBlank() && !title.isNullOrBlank() -> "$artist - $title"
-                    !title.isNullOrBlank() -> title
-                    !artist.isNullOrBlank() -> artist
-                    else -> stationName
-                }
+                val formattedTitle = RadioMetadata.formattedTitle(artist, title, stationName)
 
                 metadataBuilder.setTitle(formattedTitle)
                 if (stationName.isNotBlank()) {
@@ -901,16 +885,13 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
     }
 
     private fun getPlaybackParameters(speed: Float): PlaybackParameters {
-        val pitch = if (PlaybackPreferences.isPlaybackSpeedPitchEnabled()) getAdjustedPitch(speed) else 1.0f
+        val pitch = PlaybackSpeedPolicy.pitchFor(
+            speed,
+            PlaybackPreferences.isPlaybackSpeedPitchEnabled(),
+            PlaybackPreferences.isPlaybackSpeedManualPitchEnabled(),
+            PlaybackPreferences.getPlaybackSpeedManualPitch(),
+        )
         return PlaybackParameters(speed, pitch)
-    }
-
-    private fun getAdjustedPitch(speed: Float): Float {
-        return if (PlaybackPreferences.isPlaybackSpeedManualPitchEnabled()) {
-            PlaybackPreferences.getPlaybackSpeedManualPitch()
-        } else {
-            speed
-        }
     }
 
     private fun buildBackend(): EqualizerBackend =
@@ -1079,10 +1060,12 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
         if (mediaType != Constants.MEDIA_TYPE_RADIO) return
         
         // Skip if we already have embedded metadata (ICY/ID3) - HTTP headers are only fallback
-        val hasEmbeddedMetadata = !currentItem.mediaMetadata.artist.isNullOrBlank() ||
-                !currentItem.mediaMetadata.title.isNullOrBlank() ||
-                (!extras.getString("radioArtist").isNullOrBlank()) ||
-                (!extras.getString("radioTitle").isNullOrBlank())
+        val hasEmbeddedMetadata = RadioMetadata.hasEmbeddedMetadata(
+            currentItem.mediaMetadata.artist?.toString(),
+            currentItem.mediaMetadata.title?.toString(),
+            extras.getString("radioArtist"),
+            extras.getString("radioTitle"),
+        )
         if (hasEmbeddedMetadata) return
         
         val streamUrl = extras?.getString("uri") ?: currentItem.requestMetadata.mediaUri?.toString()
@@ -1123,9 +1106,7 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
     
     private fun processStreamTitle(streamTitle: String, player: Player) {
         // Parse "Artist - Title" format
-        val parts = streamTitle.split(" - ", limit = 2)
-        val artist = if (parts.size == 2) parts[0].trim().ifEmpty { null } else null
-        val title = if (parts.size == 2) parts[1].trim().ifEmpty { null } else streamTitle.trim().ifEmpty { null }
+        val (artist, title) = RadioMetadata.splitStreamTitle(streamTitle)
         
         if (artist.isNullOrBlank() && title.isNullOrBlank()) return
         if (artist == lastRadioArtist && title == lastRadioTitle) return // Deduplicate
@@ -1143,10 +1124,12 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
             if (currentExtras?.getString("type") != Constants.MEDIA_TYPE_RADIO) return@post
             
             // Double-check we still don't have embedded metadata (might have arrived since check)
-            val hasEmbeddedMetadata = !currentItemNow.mediaMetadata.artist.isNullOrBlank() ||
-                    !currentItemNow.mediaMetadata.title.isNullOrBlank() ||
-                    (!currentExtras.getString("radioArtist").isNullOrBlank()) ||
-                    (!currentExtras.getString("radioTitle").isNullOrBlank())
+            val hasEmbeddedMetadata = RadioMetadata.hasEmbeddedMetadata(
+                currentItemNow.mediaMetadata.artist?.toString(),
+                currentItemNow.mediaMetadata.title?.toString(),
+                currentExtras?.getString("radioArtist"),
+                currentExtras?.getString("radioTitle"),
+            )
             if (hasEmbeddedMetadata) return@post
             
             val metadataBuilder = currentItemNow.mediaMetadata.buildUpon()
@@ -1165,12 +1148,7 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
             }
             
             // Format for notification/player: Title = "Artist - Song", Artist = "Station Name"
-            val formattedTitle = when {
-                !artist.isNullOrBlank() && !title.isNullOrBlank() -> "$artist - $title"
-                !title.isNullOrBlank() -> title
-                !artist.isNullOrBlank() -> artist
-                else -> stationName
-            }
+            val formattedTitle = RadioMetadata.formattedTitle(artist, title, stationName)
             
             metadataBuilder.setTitle(formattedTitle)
             if (stationName.isNotBlank()) {
