@@ -28,7 +28,7 @@
     <string name="album_page_release_dates_label">發行日期：%1$s（原版發行於 %2$s）</string>
     <string name="album_page_shuffle_button">隨機播放</string>
     <string name="album_page_tracks_count_and_duration">%1$d 首歌曲 • %2$d 分鐘</string>
-    <string name="app_name">Tempus</string>
+    <string name="app_name">tempus danz</string>
     <string name="artist_adapter_radio_station_starting">正在搜尋...</string>
     <string name="artist_bottom_sheet_instant_mix">即時混聽</string>
     <string name="artist_bottom_sheet_shuffle">隨機播放</string>

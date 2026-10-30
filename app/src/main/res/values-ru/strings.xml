@@ -53,7 +53,7 @@
     <string name="album_page_release_dates_label">Релиз: %1$s (ориг. %2$s)</string>
     <string name="album_page_shuffle_button">Перемешать</string>
     <string name="album_page_tracks_count_and_duration">%1$d треков • %2$d мин</string>
-    <string name="app_name">Tempus</string>
+    <string name="app_name">tempus danz</string>
     <string name="artist_adapter_radio_station_starting">Поиск…</string>
     <string name="artist_bottom_sheet_instant_mix">Мгновенный микс</string>
     <string name="artist_bottom_sheet_shuffle">Перемешать</string>
