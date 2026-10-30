@@ -1,5 +1,6 @@
 package com.eddyizm.tempus.subsonic
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import retrofit2.Call
 import retrofit2.Callback
@@ -22,4 +23,16 @@ suspend fun <T> Call<T>.await(): Response<T> = suspendCancellableCoroutine { con
             continuation.resumeWithException(t)
         }
     })
+}
+
+/**
+ * Like [await], but a failed request gives null instead of throwing, so callers can treat any
+ * failure the way the old enqueue callbacks did. Cancellation still propagates.
+ */
+suspend fun <T> Call<T>.awaitOrNull(): Response<T>? = try {
+    await()
+} catch (e: CancellationException) {
+    throw e
+} catch (t: Throwable) {
+    null
 }

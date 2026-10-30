@@ -5,6 +5,7 @@ import androidx.lifecycle.LiveData;
 import com.eddyizm.tempus.database.AppDatabase;
 import com.eddyizm.tempus.database.dao.ChronologyDao;
 import com.eddyizm.tempus.model.Chronology;
+import com.eddyizm.tempus.util.IoDispatch;
 
 import java.util.Calendar;
 import java.util.List;
@@ -17,23 +18,6 @@ public class ChronologyRepository {
     }
 
     public void insert(Chronology item) {
-        InsertThreadSafe insert = new InsertThreadSafe(chronologyDao, item);
-        Thread thread = new Thread(insert);
-        thread.start();
-    }
-
-    private static class InsertThreadSafe implements Runnable {
-        private final ChronologyDao chronologyDao;
-        private final Chronology item;
-
-        public InsertThreadSafe(ChronologyDao chronologyDao, Chronology item) {
-            this.chronologyDao = chronologyDao;
-            this.item = item;
-        }
-
-        @Override
-        public void run() {
-            chronologyDao.insert(item);
-        }
+        IoDispatch.launch(() -> chronologyDao.insert(item));
     }
 }
