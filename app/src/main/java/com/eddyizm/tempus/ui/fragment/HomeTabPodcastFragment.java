@@ -3,6 +3,7 @@ package com.eddyizm.tempus.ui.fragment;
 import android.content.ComponentName;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -180,7 +181,7 @@ public class HomeTabPodcastFragment extends Fragment implements ClickCallback, P
 
     @Override
     public void onDismiss() {
-        new Handler().postDelayed(() -> {
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
             if (podcastViewModel != null) podcastViewModel.refreshPodcastChannels(getViewLifecycleOwner());
             if (podcastViewModel != null) podcastViewModel.refreshNewestPodcastEpisodes(getViewLifecycleOwner());
         }, 1000);

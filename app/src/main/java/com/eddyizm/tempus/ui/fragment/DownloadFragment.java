@@ -8,6 +8,8 @@ import android.view.ViewGroup;
 import android.widget.PopupMenu;
 
 import androidx.activity.OnBackPressedCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -36,7 +38,6 @@ import com.google.android.material.appbar.MaterialToolbar;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import android.content.Intent;
-import android.app.Activity;
 import android.net.Uri;
 import android.widget.Toast;
 
@@ -47,7 +48,9 @@ import java.util.Objects;
 @UnstableApi
 public class DownloadFragment extends Fragment implements ClickCallback {
     private static final String TAG = "DownloadFragment";
-    private static final int REQUEST_CODE_PICK_DIRECTORY = 1002;
+    // Registered here, before the fragment is created, as the Activity Result API requires.
+    private final ActivityResultLauncher<Uri> directoryPicker =
+            registerForActivityResult(new ActivityResultContracts.OpenDocumentTree(), this::onDirectoryPicked);
 
     private FragmentDownloadBinding bind;
     private MainActivity activity;
@@ -258,8 +261,7 @@ public class DownloadFragment extends Fragment implements ClickCallback {
             }
 
             if (menuItem.getItemId() == R.id.menu_download_set_directory) {
-                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-                startActivityForResult(intent, REQUEST_CODE_PICK_DIRECTORY);
+                directoryPicker.launch(null);
                 return true;
             }
 
@@ -323,20 +325,14 @@ public class DownloadFragment extends Fragment implements ClickCallback {
         Navigation.findNavController(requireView()).navigate(R.id.downloadBottomSheetDialog, bundle);
     }
 
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_CODE_PICK_DIRECTORY && resultCode == Activity.RESULT_OK) {
-            Uri uri = data.getData();
-            if (uri != null) {
-                requireContext().getContentResolver().takePersistableUriPermission(
-                        uri,
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                );
-                Preferences.setDownloadDirectoryUri(uri.toString());
-                ExternalAudioReader.refreshCache();
-                Toast.makeText(requireContext(), "Download directory set", Toast.LENGTH_SHORT).show();
-            }
-        }
+    private void onDirectoryPicked(@Nullable Uri uri) {
+        if (uri == null) return;
+        requireContext().getContentResolver().takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        );
+        Preferences.setDownloadDirectoryUri(uri.toString());
+        ExternalAudioReader.refreshCache();
+        Toast.makeText(requireContext(), "Download directory set", Toast.LENGTH_SHORT).show();
     }
 }

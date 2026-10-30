@@ -4,7 +4,6 @@ import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
-import android.net.NetworkInfo;
 import android.os.Build;
 
 import com.eddyizm.tempus.App;
@@ -79,10 +78,23 @@ public class CacheUtil {
     }
 
     // Before Android 10 a VPN can report only TRANSPORT_VPN even while it runs over another network.
-    // getActiveNetworkInfo() describes the network under the VPN there, and is null when it has none.
+    // The active network is then the VPN itself, so look for a usable underlying network instead.
+    // getAllNetworks() is deprecated, but nothing before Android 10 offers another way to list them.
+    @SuppressWarnings("deprecation")
     private static boolean hasNetworkUnderVpn(ConnectivityManager connectivityManager) {
-        NetworkInfo info = connectivityManager.getActiveNetworkInfo();
-        return info != null && info.isConnected();
+        for (Network network : connectivityManager.getAllNetworks()) {
+            NetworkCapabilities capabilities = connectivityManager.getNetworkCapabilities(network);
+            if (capabilities != null
+                    && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    && !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+                    && (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+                        || capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+                        || capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+                        || capabilities.hasTransport(NetworkCapabilities.TRANSPORT_BLUETOOTH))) {
+                return true;
+            }
+        }
+        return false;
     }
 
 }

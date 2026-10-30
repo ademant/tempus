@@ -10,7 +10,8 @@ import android.content.pm.ShortcutManager;
 import android.content.res.Configuration;
 import android.graphics.drawable.Icon;
 import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -721,9 +722,10 @@ public class MainActivity extends BaseActivity {
     private void checkConnectionType() {
         if (Preferences.isWifiOnly()) {
             ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-            NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
+            Network network = connectivityManager.getActiveNetwork();
+            NetworkCapabilities capabilities = network == null ? null : connectivityManager.getNetworkCapabilities(network);
 
-            if (networkInfo != null && networkInfo.getType() != ConnectivityManager.TYPE_WIFI) {
+            if (network != null && (capabilities == null || !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))) {
                 ConnectionAlertDialog dialog = new ConnectionAlertDialog();
                 dialog.show(getSupportFragmentManager(), null);
             }
