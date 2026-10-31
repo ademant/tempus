@@ -32,6 +32,7 @@ import com.eddyizm.tempus.subsonic.models.Child;
 import com.eddyizm.tempus.subsonic.models.InternetRadioStation;
 import com.eddyizm.tempus.subsonic.models.PodcastEpisode;
 import com.eddyizm.tempus.util.Constants;
+import com.eddyizm.tempus.util.IoLane;
 import com.eddyizm.tempus.util.MappingUtil;
 import com.eddyizm.tempus.util.ConnectionUtil;
 import com.eddyizm.tempus.util.Preferences;
@@ -50,8 +51,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -61,7 +60,7 @@ public class MediaManager {
     public static AtomicBoolean justStarted = new AtomicBoolean(false);
     public static AtomicBoolean continuousPlayIsRunning = new AtomicBoolean(false);
 
-    private static final ExecutorService backgroundExecutor = Executors.newSingleThreadExecutor();
+    private static final IoLane backgroundLane = new IoLane(1);
 
     /**
      * Where a queue edit is applied: the service's own player, or a session controller.
@@ -239,7 +238,7 @@ public class MediaManager {
                     if (mediaBrowserListenableFuture.isDone()) {
                         final MediaBrowser browser = mediaBrowserListenableFuture.get();
 
-                        backgroundExecutor.execute(() -> {
+                        backgroundLane.launch(() -> {
                             final List<MediaItem> items = MappingUtil.mapMediaItems(media);
                             final Queue lastPlayed = getQueueRepository().getLastPlayedMedia();
                             final int found = lastPlayed != null
@@ -287,7 +286,7 @@ public class MediaManager {
                         // (each one spawns a Thread and joins it), and this listener runs via
                         // directExecutor on the click thread, so a large list froze the UI.
                         // Only the player calls go back to main.
-                        backgroundExecutor.execute(() -> {
+                        backgroundLane.launch(() -> {
                             final List<MediaItem> items = MappingUtil.mapMediaItems(media);
 
                             new Handler(Looper.getMainLooper()).post(() -> {
@@ -495,7 +494,7 @@ public class MediaManager {
                         Log.e(TAG, "shuffle");
                         final MediaBrowser browser = mediaBrowserListenableFuture.get();
 
-                        backgroundExecutor.execute(() -> {
+                        backgroundLane.launch(() -> {
                             final List<MediaItem> mapped = MappingUtil.mapMediaItems(media);
 
                             new Handler(Looper.getMainLooper()).post(() -> {

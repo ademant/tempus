@@ -12,9 +12,9 @@ import androidx.media3.datasource.cache.CacheWriter
 import androidx.media3.datasource.cache.ContentMetadata
 import com.eddyizm.tempus.util.Constants
 import com.eddyizm.tempus.util.DownloadUtil
+import com.eddyizm.tempus.util.IoLane
 import com.eddyizm.tempus.util.StreamingPreferences
 import com.eddyizm.tempus.util.StreamingCacheKeyFactory
-import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -31,9 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger
 object QueuePreloader {
     private const val TAG = "QueuePreloader"
 
-    private val executor = Executors.newSingleThreadExecutor { runnable ->
-        Thread(runnable, "queue-preloader").apply { priority = Thread.MIN_PRIORITY }
-    }
+    private val lane = IoLane(1)
     private val generation = AtomicInteger(0)
 
     @Volatile
@@ -73,9 +71,9 @@ object QueuePreloader {
 
         if (uris.isEmpty()) return
 
-        executor.execute {
+        lane.launch {
             for (uri in uris) {
-                if (generation.get() != myGeneration) return@execute
+                if (generation.get() != myGeneration) return@launch
                 if (isFullyCached(appContext, uri)) continue
                 cacheTrack(appContext, uri, myGeneration)
             }

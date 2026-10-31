@@ -12,9 +12,8 @@ import com.bumptech.glide.Glide
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
+import com.eddyizm.tempus.util.IoLane
 import java.io.IOException
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 
 // Custom BitmapLoader that returns immediateFuture on cache hits. Works around
 // Media3 MediaSessionLegacyStub pushing an initial setMetadata(bitmap=null) to
@@ -28,7 +27,7 @@ class SyncBitmapLoader(
 ) : BitmapLoader {
 
     private val cache = LruCache<Uri, Bitmap>(CACHE_SIZE)
-    private val executor: ExecutorService = Executors.newFixedThreadPool(2)
+    private val lane = IoLane(2)
 
     override fun supportsMimeType(mimeType: String): Boolean {
         return mimeType.startsWith("image/")
@@ -51,8 +50,11 @@ class SyncBitmapLoader(
         cache.get(uri)?.let {
             return Futures.immediateFuture(it)
         }
+        if (lane.isShutdown) {
+            return Futures.immediateFailedFuture(IllegalStateException("Bitmap loader is shut down"))
+        }
         val future = SettableFuture.create<Bitmap>()
-        executor.execute {
+        lane.launch {
             try {
                 val bitmap = Glide.with(context)
                     .asBitmap()
@@ -70,8 +72,8 @@ class SyncBitmapLoader(
 
     fun prewarm(uri: Uri) {
         if (cache.get(uri) != null) return
-        executor.execute {
-            if (cache.get(uri) != null) return@execute
+        lane.launch {
+            if (cache.get(uri) != null) return@launch
             try {
                 val bitmap = Glide.with(context)
                     .asBitmap()
@@ -85,7 +87,7 @@ class SyncBitmapLoader(
     }
 
     fun shutdown() {
-        executor.shutdown()
+        lane.shutdown()
     }
 
     companion object {
