@@ -10,7 +10,7 @@ import androidx.mediarouter.media.MediaRouteDiscoveryRequest
 import androidx.mediarouter.media.MediaRouteProvider
 import androidx.mediarouter.media.MediaRouteProviderDescriptor
 import androidx.mediarouter.media.MediaRouter
-import java.util.concurrent.Executors
+import com.eddyizm.tempus.util.IoLane
 import java.util.concurrent.TimeUnit
 
 class UpnpRouteProvider(
@@ -26,7 +26,7 @@ class UpnpRouteProvider(
 
     var selectionListener: SelectionListener? = null
 
-    private val worker = Executors.newSingleThreadExecutor()
+    private val worker = IoLane(1)
     private val handler = Handler(Looper.getMainLooper())
 
     // Replaced whole, never edited in place, or publish() throws ConcurrentModificationException.
@@ -42,7 +42,7 @@ class UpnpRouteProvider(
             // The worker's queue is unbounded, so a tick posted while a scan runs builds a backlog.
             if (!scanInFlight && !worker.isShutdown) {
                 scanInFlight = true
-                worker.execute {
+                worker.launch {
                     try {
                         scanOnce()
                     } finally {
@@ -54,7 +54,7 @@ class UpnpRouteProvider(
         }
     }
 
-    /** The executor thread is not a daemon and the owning service cycles often, leaking one per cycle. */
+    /** The owning service cycles often. A stopped lane holds no thread once its queue drains. */
     fun release() {
         scanning = false
         activeScan = false
