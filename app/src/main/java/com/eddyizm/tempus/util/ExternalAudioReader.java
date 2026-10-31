@@ -19,15 +19,13 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import com.eddyizm.tempus.util.DownloadPreferences;
 
 public class ExternalAudioReader {
 
     private static final Map<String, DocumentFile> cache = new ConcurrentHashMap<>();
     private static final Object LOCK = new Object();
-    private static final ExecutorService REFRESH_EXECUTOR = Executors.newSingleThreadExecutor();
+    private static final IoLane REFRESH_LANE = new IoLane(1);
     private static final MutableLiveData<Long> refreshEvents = new MutableLiveData<>();
 
     private static volatile String cachedDirUri;
@@ -164,7 +162,7 @@ public class ExternalAudioReader {
         }
 
         refreshInProgress = true;
-        REFRESH_EXECUTOR.execute(() -> {
+        REFRESH_LANE.launch(() -> {
             try {
                 rebuildCache();
             } finally {

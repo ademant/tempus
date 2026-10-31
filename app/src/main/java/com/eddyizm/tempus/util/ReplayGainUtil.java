@@ -27,8 +27,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import com.eddyizm.tempus.util.PlaybackPreferences;
 
 @OptIn(markerClass = UnstableApi.class)
@@ -45,8 +43,7 @@ public class ReplayGainUtil {
 
     private static final Set<String> prefetchedIds = ConcurrentHashMap.newKeySet();
 
-    private static final ExecutorService prefetchExecutor =
-            Executors.newFixedThreadPool(2);
+    private static final IoLane prefetchLane = new IoLane(2);
 
     // Audio processor that applies gain directly to PCM samples inside
     // ExoPlayer's audio pipeline.  Unlike player.setVolume() this is
@@ -100,7 +97,7 @@ public class ReplayGainUtil {
     }
 
     private static void submitPrefetch(MediaItem item) {
-        prefetchExecutor.execute(() -> {
+        prefetchLane.launch(() -> {
             try (MetadataRetriever retriever =
                          new MetadataRetriever.Builder(App.getInstance(), item).build()) {
 

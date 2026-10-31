@@ -29,8 +29,6 @@ import java.text.Normalizer;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import androidx.media3.common.util.UnstableApi;
 import com.eddyizm.tempus.util.DownloadPreferences;
@@ -38,7 +36,7 @@ import com.eddyizm.tempus.util.DownloadPreferences;
 @UnstableApi
 public class ExternalAudioWriter {
 
-    private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
+    private static final IoLane DOWNLOAD_LANE = new IoLane(1);
     private static final Set<String> PENDING = ConcurrentHashMap.newKeySet();
 
     public static boolean isPending(String mediaId) {
@@ -95,7 +93,7 @@ public class ExternalAudioWriter {
         DownloadProgressState.getInstance().onEnqueue(appContext);
 
         PENDING.add(child.getId());
-        EXECUTOR.execute(() -> {
+        DOWNLOAD_LANE.launch(() -> {
             try {
                 performDownload(appContext, mediaItem, fallbackName, child, playlistId, playlistName);
             } finally {
