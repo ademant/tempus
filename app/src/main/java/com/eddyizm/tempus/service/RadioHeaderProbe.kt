@@ -8,11 +8,14 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.eddyizm.tempus.util.Constants
 import java.net.HttpURLConnection
 import java.net.URL
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.ScheduledFuture
-import java.util.concurrent.TimeUnit
 import androidx.media3.common.util.UnstableApi
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private const val RADIO_HEADER_CHECK_INTERVAL_SECONDS = 30L // Reduced frequency - only fallback when ICY fails
 
@@ -27,12 +30,9 @@ internal class RadioHeaderProbe(
     private val currentPlayer: () -> Player,
     private val widgetUpdater: WidgetUpdater,
 ) {
-    private val radioHeaderCheckExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var radioHeaderCheckScheduled = false
-    private var radioHeaderCheckFuture: ScheduledFuture<*>? = null
-    private val radioHeaderCheckRunnable = Runnable {
-        checkRadioHttpHeaders()
-    }
+    private var radioHeaderCheckJob: Job? = null
     private var lastRadioArtist: String? = null
     private var lastRadioTitle: String? = null
 
@@ -45,7 +45,7 @@ internal class RadioHeaderProbe(
     }
 
     fun shutdown() {
-        radioHeaderCheckExecutor.shutdown()
+        scope.cancel()
     }
 
     fun schedule() {
@@ -58,19 +58,24 @@ internal class RadioHeaderProbe(
         
         // Check immediately, then periodically
         checkRadioHttpHeaders()
-        radioHeaderCheckFuture = radioHeaderCheckExecutor.scheduleWithFixedDelay(
-            radioHeaderCheckRunnable,
-            RADIO_HEADER_CHECK_INTERVAL_SECONDS,
-            RADIO_HEADER_CHECK_INTERVAL_SECONDS,
-            TimeUnit.SECONDS
-        )
+        radioHeaderCheckJob = scope.launch {
+            while (true) {
+                delay(RADIO_HEADER_CHECK_INTERVAL_SECONDS * 1000)
+                try {
+                    checkRadioHttpHeaders()
+                } catch (e: Exception) {
+                    // A failed run ends the periodic checks, as it did with the scheduled executor.
+                    return@launch
+                }
+            }
+        }
         radioHeaderCheckScheduled = true
     }
 
     fun stop() {
         if (!radioHeaderCheckScheduled) return
-        radioHeaderCheckFuture?.cancel(false)
-        radioHeaderCheckFuture = null
+        radioHeaderCheckJob?.cancel()
+        radioHeaderCheckJob = null
         radioHeaderCheckScheduled = false
     }
 

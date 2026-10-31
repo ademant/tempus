@@ -57,4 +57,16 @@ class IoLaneTest {
         assertTrue("tasks did not finish", done.await(20, TimeUnit.SECONDS))
         assertTrue("ran ${maxRunning.get()} at once, limit is $limit", maxRunning.get() <= limit)
     }
+
+    @Test
+    fun `shutdown lane rejects new work`() {
+        val lane = IoLane(1)
+        lane.shutdown()
+        assertTrue(lane.isShutdown)
+
+        val ran = AtomicInteger(0)
+        lane.launch { ran.incrementAndGet() }
+        Thread.sleep(50)
+        assertEquals(0, ran.get())
+    }
 }

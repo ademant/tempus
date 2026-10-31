@@ -1,9 +1,11 @@
 package com.eddyizm.tempus.util
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -17,7 +19,14 @@ class IoLane(parallelism: Int) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(parallelism))
 
+    val isShutdown: Boolean get() = !scope.isActive
+
     fun launch(block: Runnable) {
         scope.launch { block.run() }
+    }
+
+    /** Cancels queued work and rejects new work. Meant for service teardown. */
+    fun shutdown() {
+        scope.cancel()
     }
 }
