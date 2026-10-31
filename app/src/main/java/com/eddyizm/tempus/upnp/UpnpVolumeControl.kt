@@ -4,13 +4,13 @@ import android.os.Handler
 import android.util.Log
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
-import java.util.concurrent.Executors
+import com.eddyizm.tempus.util.IoLane
 import java.util.concurrent.TimeUnit
 
 /**
  * Renderer volume, and the event subscription that tells us when the renderer changes it.
  *
- * Runs on its own thread, so a key press never waits behind a Play the renderer is holding.
+ * Runs on its own lane, so a key press never waits behind a Play the renderer is holding.
  * [isReleased] tells it the player is gone. [onChanged] asks the player to publish a new state.
  */
 internal class UpnpVolumeControl(
@@ -20,7 +20,7 @@ internal class UpnpVolumeControl(
     private val isReleased: () -> Boolean,
     private val onChanged: () -> Unit,
 ) {
-    private val volumeWorker = Executors.newSingleThreadExecutor()
+    private val volumeWorker = IoLane(1)
     private var events: UpnpEvents? = null
     @Volatile private var subscriptionId: String? = null
 
@@ -40,7 +40,7 @@ internal class UpnpVolumeControl(
 
     fun start() {
         device.eventUrls[UpnpDevice.RENDERING_CONTROL]?.let { url ->
-            volumeWorker.execute { if (!subscribe(url)) renewAfter(RESUBSCRIBE_MS, url) }
+            volumeWorker.launch { if (!subscribe(url)) renewAfter(RESUBSCRIBE_MS, url) }
         }
     }
 
@@ -51,8 +51,8 @@ internal class UpnpVolumeControl(
         deviceVolume = target
         handler.removeCallbacks(settleVolume)
         val request = ++volumeRequests
-        volumeWorker.execute {
-            if (request != volumeRequests || isReleased()) return@execute
+        volumeWorker.launch {
+            if (request != volumeRequests || isReleased()) return@launch
             try {
                 controlPoint.setVolume(device, target)
             } catch (e: Exception) {
@@ -107,7 +107,7 @@ internal class UpnpVolumeControl(
         handler.post {
             if (isReleased()) return@post
             handler.postDelayed(
-                { if (!isReleased()) volumeWorker.execute { renew(eventUrl) } },
+                { if (!isReleased()) volumeWorker.launch { renew(eventUrl) } },
                 delayMs.coerceAtLeast(MIN_RENEW_MS)
             )
         }
@@ -115,7 +115,7 @@ internal class UpnpVolumeControl(
 
     /** Unsubscribes and closes the event listener. The player has already been marked released. */
     fun close() {
-        volumeWorker.execute {
+        volumeWorker.launch {
             val url = device.eventUrls[UpnpDevice.RENDERING_CONTROL]
             val id = subscriptionId
             if (url != null && id != null) {

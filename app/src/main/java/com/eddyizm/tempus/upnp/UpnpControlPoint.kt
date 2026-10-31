@@ -6,8 +6,6 @@ import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
 import java.net.InetSocketAddress
-import java.util.concurrent.Callable
-import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import javax.xml.parsers.DocumentBuilderFactory
 import okhttp3.MediaType.Companion.toMediaType
@@ -16,6 +14,11 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.w3c.dom.Element
 import org.xml.sax.InputSource
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.runBlocking
 
 class UpnpException(val code: Int, val description: String) :
     Exception("UPnP error $code: $description") {
@@ -42,15 +45,14 @@ open class UpnpControlPoint(
         fetchDescriptions(search(timeoutMillis))
 
     /** Reads run together, since one address that connects and then says nothing holds a whole call. */
+    @OptIn(ExperimentalCoroutinesApi::class)
     internal fun fetchDescriptions(locations: Collection<String>): List<UpnpDevice> {
         if (locations.isEmpty()) return emptyList()
 
-        val pool = Executors.newFixedThreadPool(minOf(locations.size, MAX_DESCRIPTION_FETCHES))
-        val fetched = try {
-            pool.invokeAll(locations.map { location -> Callable { location to get(location) } })
-                .map { it.get() }
-        } finally {
-            pool.shutdown()
+        // get() reports its own failures as null, so awaiting every fetch cannot throw here.
+        val fetched = runBlocking(Dispatchers.IO) {
+            val gate = Dispatchers.IO.limitedParallelism(minOf(locations.size, MAX_DESCRIPTION_FETCHES))
+            locations.map { location -> async(gate) { location to get(location) } }.awaitAll()
         }
 
         val devices = ArrayList<UpnpDevice>()

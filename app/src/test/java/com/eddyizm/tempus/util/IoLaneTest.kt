@@ -5,6 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Collections
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -68,5 +69,42 @@ class IoLaneTest {
         lane.launch { ran.incrementAndGet() }
         Thread.sleep(50)
         assertEquals(0, ran.get())
+    }
+
+    @Test
+    fun `shutdown keeps queued work and drops new work`() {
+        val lane = IoLane(1)
+        val gate = CountDownLatch(1)
+        val queuedRan = CountDownLatch(1)
+        val lateRan = AtomicInteger(0)
+
+        lane.launch { gate.await() }
+        lane.launch { queuedRan.countDown() }
+        lane.shutdown()
+        lane.launch { lateRan.incrementAndGet() }
+        gate.countDown()
+
+        assertTrue("queued work did not run after shutdown", queuedRan.await(20, TimeUnit.SECONDS))
+        Thread.sleep(50)
+        assertEquals(0, lateRan.get())
+    }
+
+    @Test
+    fun `submit returns the result`() {
+        val lane = IoLane(1)
+        assertEquals(42, lane.submit { 21 * 2 }.get(20, TimeUnit.SECONDS))
+    }
+
+    @Test
+    fun `submit after shutdown fails`() {
+        val lane = IoLane(1)
+        lane.shutdown()
+        val failed = try {
+            lane.submit { 1 }.get(20, TimeUnit.SECONDS)
+            false
+        } catch (e: ExecutionException) {
+            e.cause is IllegalStateException
+        }
+        assertTrue(failed)
     }
 }

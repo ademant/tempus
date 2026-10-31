@@ -19,9 +19,7 @@ import com.eddyizm.tempus.util.Constants
 import com.eddyizm.tempus.util.MusicUtil
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
-import com.google.common.util.concurrent.ListeningExecutorService
-import com.google.common.util.concurrent.MoreExecutors
-import java.util.concurrent.Executors
+import com.eddyizm.tempus.util.IoLane
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
@@ -33,8 +31,7 @@ class UpnpPlayer(
     private val controlPoint: UpnpControlPoint,
     val device: UpnpDevice,
     looper: Looper,
-    private val worker: ListeningExecutorService =
-        MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor()),
+    private val worker: IoLane = IoLane(1),
     private val streamUrl: (MediaItem) -> String? = { streamUrlFor(it) },
     context: Context? = null
 ) : SimpleBasePlayer(looper) {
@@ -148,7 +145,7 @@ class UpnpPlayer(
     private val poll = object : Runnable {
         override fun run() {
             if (released || !polling) return
-            worker.execute { readRemoteState() }
+            worker.launch { readRemoteState() }
             handler.postDelayed(this, POLL_INTERVAL_MS)
         }
     }
@@ -267,7 +264,7 @@ class UpnpPlayer(
         invalidateLater()
 
         return when {
-            queue.isEmpty() -> worker.submit<Unit> {
+            queue.isEmpty() -> worker.submit {
                 stopRenderer("on an emptied queue")
                 playbackState = Player.STATE_ENDED
                 stopPolling()
@@ -279,7 +276,7 @@ class UpnpPlayer(
                 loadLater(seekToMs = 0L)
             }
             urlOf(queue.getOrNull(index + 1)) != nextUrlBefore ->
-                worker.submit<Unit> { sendNextTrack() }
+                worker.submit { sendNextTrack() }
             else -> Futures.immediateVoidFuture()
         }
     }
@@ -296,7 +293,7 @@ class UpnpPlayer(
 
     // A throw escaping here silently abandons every state write after it and nobody is told.
     override fun handleSetPlayWhenReady(playWhenReady: Boolean): ListenableFuture<*> =
-        worker.submit<Unit> {
+        worker.submit {
             try {
                 if (playWhenReady && handoverOnPlay) {
                     stationPausedAt = 0L
@@ -384,7 +381,7 @@ class UpnpPlayer(
 
         val generation =
             if (loadedGeneration == loadGeneration) ++loadGeneration else loadGeneration
-        return worker.submit<Unit> {
+        return worker.submit {
             // Before the renderer has reported playing a seek waits for it, as one sent after a Play does.
             val taken =
                 if (playWhenReady && !rendererStarted) seekOnceStarted(target) else seekWhenPlaying(target)
@@ -398,7 +395,7 @@ class UpnpPlayer(
         }
     }
 
-    override fun handleStop(): ListenableFuture<*> = worker.submit<Unit> {
+    override fun handleStop(): ListenableFuture<*> = worker.submit {
         stopRenderer("on stop")
         playWhenReady = false
         updateWakeLock()
@@ -420,7 +417,7 @@ class UpnpPlayer(
         updateWakeLock()
         handler.removeCallbacksAndMessages(null)
         volumeControl.close()
-        return worker.submit<Unit> {
+        return worker.submit {
             stopRenderer("on release")
             worker.shutdown()
         }
@@ -429,7 +426,7 @@ class UpnpPlayer(
     private fun loadLater(seekToMs: Long): ListenableFuture<*> {
         val generation = ++loadGeneration
         pendingLoads.incrementAndGet()
-        return worker.submit<Unit> {
+        return worker.submit {
             try {
                 if (generation == loadGeneration) {
                     loadCurrent(seekToMs)
