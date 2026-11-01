@@ -191,7 +191,7 @@ public class PlaylistPageFragment extends Fragment implements ClickCallback {
         if (item.getItemId() == R.id.action_download_playlist) {
             if (downloadAllWaiting) return true;
             downloadAllWaiting = true;
-            LiveData<List<Child>> live = playlistPageViewModel.songs();
+            LiveData<List<Child>> live = playlistPageViewModel.songsLive();
             live.observe(getViewLifecycleOwner(), new Observer<List<Child>>() {
                 @Override
                 public void onChanged(List<Child> songs) {
@@ -217,7 +217,7 @@ public class PlaylistPageFragment extends Fragment implements ClickCallback {
             playlistPageViewModel.setPinned(false);
             return true;
         } else if (item.getItemId() == R.id.action_add_to_queue) {
-            List<Child> songs = playlistPageViewModel.getPlaylistSongLiveList().getValue();
+            List<Child> songs = playlistPageViewModel.currentSongList();
             if (isVisible() && getActivity() != null && songs != null && !songs.isEmpty()) {
                 MediaManager.enqueue(mediaBrowserListenableFuture, songs, false);
             }
@@ -484,7 +484,7 @@ public class PlaylistPageFragment extends Fragment implements ClickCallback {
         // removes by. The pressed row's own object is looked for first, because a playlist can
         // hold a song twice and Child compares by value. No index while a remove or an undo is
         // out, which hides the option in the sheet.
-        List<Child> songs = playlistPageViewModel.getPlaylistSongLiveList().getValue();
+        List<Child> songs = playlistPageViewModel.currentSongList();
         Child track = bundle.getParcelable(Constants.TRACK_OBJECT);
         if (songs != null) {
             int index = -1;
