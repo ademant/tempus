@@ -18,10 +18,16 @@ import org.json.JSONArray
 import com.eddyizm.tempus.subsonic.models.Child
 import android.widget.Toast
 import java.net.InetSocketAddress
-import java.util.concurrent.Executors
-import java.util.concurrent.Future
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocket
+import com.eddyizm.tempus.util.IoLane
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runInterruptible
 
 /** Process-local selection, shared by setup, full player and mini player. No Activity references. */
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
@@ -32,15 +38,16 @@ object LanRemoteSession {
     private var loadedRevision: String? = null
     private var loadingQueue = false
     private var appContext: Context? = null
-    private val watcher = Executors.newSingleThreadExecutor()
-    private val commands = Executors.newSingleThreadExecutor()
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val watchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1))
+    private val commands = IoLane(1)
     @Volatile private var generation = 0L
     @Volatile private var target: NsdServiceInfo? = null
     @Volatile private var pin: String? = null
     @Volatile private var server: String? = null
     @Volatile private var stream: SSLSocket? = null
     @Volatile private var commandSocket: SSLSocket? = null
-    private var task: Future<*>? = null
+    private var task: Job? = null
 
     @JvmStatic fun state(): LiveData<LanRemoteState> = updates
     @JvmStatic fun current(): LanRemoteState = updates.value ?: LanRemoteState()
@@ -63,7 +70,7 @@ object LanRemoteSession {
         target = null; pin = null
         runCatching { stream?.close() }; stream = null
         runCatching { commandSocket?.close() }; commandSocket = null
-        task?.cancel(true); task = null
+        task?.cancel(); task = null
         updates.value = LanRemoteState()
         queueUpdates.value = emptyList()
         loadedRevision = null; loadingQueue = false
@@ -80,66 +87,69 @@ object LanRemoteSession {
         server = localServer
         target = info
         updates.value = LanRemoteState(active = true, name = info.serviceName)
-        task = watcher.submit {
-            var approved: String? = expectedPin
-            var first = true
-            try {
-                val tls = LanWire.context()
-                while (generation == token && !Thread.currentThread().isInterrupted) {
-                    try {
-                        if (ServerPreferences.getServer() != localServer) throw ServerMismatch()
-                        val socket = open(tls, info, token, true)
-                        socket.use {
-                            val peer = LanWire.peer(it)
-                            val saved = LanReceiverService.prefs(app).getStringSet("receivers", emptySet())!!
-                            if (peer !in saved || (approved != null && peer != approved)) throw PairingRequired()
-                            approved = peer
-                            pin = peer
-                            LanWire.write(it, JSONObject().put("command", "watch"))
-                            LanDiagnostics.record("Controller subscribed to live playback")
-                            while (generation == token) {
-                                val json = LanWire.read(it)
-                                if (ServerPreferences.getServer() != localServer) throw ServerMismatch()
-                                if (json.has("error")) throw RequestRejected()
-                                if (json.optInt("remoteVersion") < 4) throw UpdateRequired()
-                                if (json.optString("server") != LanWire.fingerprint(localServer.trimEnd('/').toByteArray())) throw ServerMismatch()
-                                val state = decode(json)
-                                val pause = first
-                                first = false
-                                main.post {
-                                    if (generation == token) {
-                                        updates.value = state
-                                        LanRemoteVolume.update(app, state)
-                                        refreshQueue()
-                                        if (pause) pauseLocal(app, token)
+        task = watchScope.launch {
+            // Interruptible, so cancel() ends the blocking socket reads and sleeps, as cancel(true) did.
+            runInterruptible {
+                var approved: String? = expectedPin
+                var first = true
+                try {
+                    val tls = LanWire.context()
+                    while (generation == token && !Thread.currentThread().isInterrupted) {
+                        try {
+                            if (ServerPreferences.getServer() != localServer) throw ServerMismatch()
+                            val socket = open(tls, info, token, true)
+                            socket.use {
+                                val peer = LanWire.peer(it)
+                                val saved = LanReceiverService.prefs(app).getStringSet("receivers", emptySet())!!
+                                if (peer !in saved || (approved != null && peer != approved)) throw PairingRequired()
+                                approved = peer
+                                pin = peer
+                                LanWire.write(it, JSONObject().put("command", "watch"))
+                                LanDiagnostics.record("Controller subscribed to live playback")
+                                while (generation == token) {
+                                    val json = LanWire.read(it)
+                                    if (ServerPreferences.getServer() != localServer) throw ServerMismatch()
+                                    if (json.has("error")) throw RequestRejected()
+                                    if (json.optInt("remoteVersion") < 4) throw UpdateRequired()
+                                    if (json.optString("server") != LanWire.fingerprint(localServer.trimEnd('/').toByteArray())) throw ServerMismatch()
+                                    val state = decode(json)
+                                    val pause = first
+                                    first = false
+                                    main.post {
+                                        if (generation == token) {
+                                            updates.value = state
+                                            LanRemoteVolume.update(app, state)
+                                            refreshQueue()
+                                            if (pause) pauseLocal(app, token)
+                                        }
                                     }
                                 }
                             }
+                        } catch (e: Exception) {
+                            if (generation != token || Thread.currentThread().isInterrupted) break
+                            if (e is PairingRequired || e is ServerMismatch || e is UpdateRequired || e is RequestRejected) throw e
+                            LanDiagnostics.record("Controller live connection interrupted", e)
+                            main.post { if (generation == token) {
+                                updates.value = current().copy(connected = false, error = R.string.lan_reconnecting)
+                                LanRemoteVolume.release()
+                            } }
+                            Thread.sleep(2000)
                         }
-                    } catch (e: Exception) {
-                        if (generation != token || Thread.currentThread().isInterrupted) break
-                        if (e is PairingRequired || e is ServerMismatch || e is UpdateRequired || e is RequestRejected) throw e
-                        LanDiagnostics.record("Controller live connection interrupted", e)
-                        main.post { if (generation == token) {
-                            updates.value = current().copy(connected = false, error = R.string.lan_reconnecting)
-                            LanRemoteVolume.release()
-                        } }
-                        Thread.sleep(2000)
                     }
-                }
-            } catch (e: Exception) {
-                if (generation == token) {
-                    LanDiagnostics.record("Controller connection rejected", e)
-                    main.post { if (generation == token) {
-                        LanRemoteVolume.release()
-                        updates.value = current().copy(connected = false, error = when (e) {
-                        is PairingRequired -> R.string.lan_pair_first
-                        is ServerMismatch -> R.string.lan_server_mismatch
-                        is UpdateRequired -> R.string.lan_update_both
-                        else -> R.string.lan_connection_error
-                    }) } }
-                }
-            } finally { if (generation == token) stream = null }
+                } catch (e: Exception) {
+                    if (generation == token) {
+                        LanDiagnostics.record("Controller connection rejected", e)
+                        main.post { if (generation == token) {
+                            LanRemoteVolume.release()
+                            updates.value = current().copy(connected = false, error = when (e) {
+                            is PairingRequired -> R.string.lan_pair_first
+                            is ServerMismatch -> R.string.lan_server_mismatch
+                            is UpdateRequired -> R.string.lan_update_both
+                            else -> R.string.lan_connection_error
+                        }) } }
+                    }
+                } finally { if (generation == token) stream = null }
+            }
         }
     }
 
@@ -222,7 +232,7 @@ object LanRemoteSession {
         val token = generation
         val info = target ?: return
         val expected = pin ?: return
-        commands.execute {
+        commands.launch {
             try {
                 check(generation == token && ServerPreferences.getServer() == server)
                 val result = open(LanWire.context(), info, token, false).use {

@@ -25,8 +25,13 @@ import androidx.preference.SwitchPreference
 import com.eddyizm.tempus.R
 import com.eddyizm.tempus.util.ServerPreferences
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import java.util.concurrent.Executors
-import java.util.concurrent.Future
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runInterruptible
 
 /** Receiver availability and controller discovery are independent roles, not app modes. */
 class LanSettingsFragment : PreferenceFragmentCompat() {
@@ -44,12 +49,12 @@ class LanSettingsFragment : PreferenceFragmentCompat() {
     private lateinit var releaseControl: Preference
 
     private val main = Handler(Looper.getMainLooper())
-    private val io = Executors.newSingleThreadExecutor()
+    private val io = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val pairingClient = LanPairingClient()
     private val discovered = linkedMapOf<String, FoundDevice>()
     private var discoveryListener: NsdManager.DiscoveryListener? = null
     private var restartDiscovery = false
-    private var operation: Future<*>? = null
+    private var operation: Job? = null
     private var dialog: AlertDialog? = null
     private var active = false
     private var generation = 0L
@@ -401,8 +406,8 @@ class LanSettingsFragment : PreferenceFragmentCompat() {
         busy = true
         val token = generation
         val name = LanReceiverService.name(app)
-        operation = io.submit {
-            val result = runCatching { pairingClient.hello(info, name) }
+        operation = io.launch {
+            val result = runCatching { runInterruptible { pairingClient.hello(info, name) } }
             main.post {
                 if (!isCurrent(token)) return@post
                 busy = false
@@ -489,7 +494,7 @@ class LanSettingsFragment : PreferenceFragmentCompat() {
         discoveryListener?.let { runCatching { nsd.stopServiceDiscovery(it) } }
         discoveryListener = null
         restartDiscovery = false
-        operation?.cancel(true)
+        operation?.cancel()
         pairingClient.cancel()
         dialog?.dismiss()
         dialog = null
@@ -498,7 +503,7 @@ class LanSettingsFragment : PreferenceFragmentCompat() {
     }
 
     override fun onDestroy() {
-        io.shutdownNow()
+        io.cancel()
         super.onDestroy()
     }
 }
