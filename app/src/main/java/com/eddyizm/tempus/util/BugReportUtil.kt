@@ -20,11 +20,7 @@ object BugReportUtil {
         }
         // Kotlin wanted this
         return if (packageInfo != null) {
-            (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                packageInfo.longVersionCode.toString()
-            } else {
-                packageInfo.versionCode.toString()
-            })
+            packageInfo.longVersionCode.toString()
         } else {
             "Unkown"
         }

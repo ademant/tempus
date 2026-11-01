@@ -26,7 +26,7 @@ PR rules (target branch, screenshots, `USAGE.md` updates) are in `CONTRIBUTING.m
 - **Kotlin**: 2.2.20
 - **Java**: 21 (via Foojay toolchain resolver in `settings.gradle`)
 - **compileSdk/targetSdk**: 37
-- **minSdk**: 24
+- **minSdk**: 29 (Android 10)
 
 ### Key Commands
 ```bash

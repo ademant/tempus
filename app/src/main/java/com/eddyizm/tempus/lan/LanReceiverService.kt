@@ -99,7 +99,7 @@ class LanReceiverService : Service() {
         LanDiagnostics.record("Receiver starting")
         serverIdentity = ServerPreferences.getServer()
         val notifications = getSystemService(NotificationManager::class.java)
-        if (Build.VERSION.SDK_INT >= 26) notifications.createNotificationChannel(
+        notifications.createNotificationChannel(
             NotificationChannel("lan_receiver", getString(R.string.lan_title), NotificationManager.IMPORTANCE_LOW))
         val open = PendingIntent.getActivity(this, 0, Intent(this, LanPlaybackActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
         val stop = PendingIntent.getService(this, 1, Intent(this, LanReceiverService::class.java).setAction("stop"), PendingIntent.FLAG_IMMUTABLE)

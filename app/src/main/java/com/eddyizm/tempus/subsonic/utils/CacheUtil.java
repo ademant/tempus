@@ -4,7 +4,6 @@ import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
-import android.os.Build;
 
 import com.eddyizm.tempus.App;
 
@@ -63,38 +62,12 @@ public class CacheUtil {
                 || capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
                 || capabilities.hasTransport(NetworkCapabilities.TRANSPORT_BLUETOOTH);
 
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
-                && capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
-                && !hasAppropriateTransport) {
-            return hasNetworkUnderVpn(connectivityManager);
-        }
-
         boolean hasInternet = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
         if (!hasInternet) {
             return false;
         }
 
         return hasAppropriateTransport;
-    }
-
-    // Before Android 10 a VPN can report only TRANSPORT_VPN even while it runs over another network.
-    // The active network is then the VPN itself, so look for a usable underlying network instead.
-    // getAllNetworks() is deprecated, but nothing before Android 10 offers another way to list them.
-    @SuppressWarnings("deprecation")
-    private static boolean hasNetworkUnderVpn(ConnectivityManager connectivityManager) {
-        for (Network network : connectivityManager.getAllNetworks()) {
-            NetworkCapabilities capabilities = connectivityManager.getNetworkCapabilities(network);
-            if (capabilities != null
-                    && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                    && !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
-                    && (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
-                        || capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
-                        || capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
-                        || capabilities.hasTransport(NetworkCapabilities.TRANSPORT_BLUETOOTH))) {
-                return true;
-            }
-        }
-        return false;
     }
 
 }
