@@ -8,6 +8,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.DialogFragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.media3.common.util.UnstableApi;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.eddyizm.tempus.R;
@@ -19,6 +20,7 @@ import com.eddyizm.tempus.util.Constants;
 import com.eddyizm.tempus.viewmodel.PlaylistChooserViewModel;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
+@UnstableApi
 public class PlaylistChooserDialog extends DialogFragment implements ClickCallback {
     private DialogPlaylistChooserBinding bind;
     private PlaylistChooserViewModel playlistChooserViewModel;
