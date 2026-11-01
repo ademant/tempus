@@ -221,11 +221,11 @@ public class PlaylistPageViewModelTest {
         viewModel.getPlaylistSongLiveList();
 
         onMissing.getValue().run();
-        assertEquals(Boolean.TRUE, viewModel.getPlaylistMissingEvent().getValue());
+        assertEquals(Boolean.TRUE, viewModel.missingEvent().getValue());
 
         viewModel.clearPlaylistMissingEvent();
         onMissing.getValue().run();
-        assertEquals(Boolean.FALSE, viewModel.getPlaylistMissingEvent().getValue());
+        assertEquals(Boolean.FALSE, viewModel.missingEvent().getValue());
     }
 
     @Test

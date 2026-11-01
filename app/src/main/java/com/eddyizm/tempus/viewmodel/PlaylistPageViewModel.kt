@@ -6,10 +6,13 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
+import androidx.lifecycle.asLiveData
 import androidx.media3.common.util.UnstableApi
 import com.eddyizm.tempus.repository.PlaylistRepository
 import com.eddyizm.tempus.subsonic.models.Child
 import com.eddyizm.tempus.subsonic.models.Playlist
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * The playlist page's songs and the writes that change them. Reads and writes are sequenced so
@@ -32,8 +35,12 @@ class PlaylistPageViewModel(application: Application) : AndroidViewModel(applica
     private var fetchSequence = 0
     private var publishedSequence = 0
 
-    private val songLiveList = MutableLiveData<List<Child>?>()
-    private val playlistMissingEvent = MutableLiveData<Boolean?>()
+    // State lives in flows, which the page reads synchronously through songs() and missingEvent().
+    // The LiveData views are for observers, which the fragment attaches to.
+    private val songState = MutableStateFlow<List<Child>?>(null)
+    private val missingState = MutableStateFlow<Boolean?>(null)
+    private val songLive = songState.asLiveData()
+    private val missingLive = missingState.asLiveData()
 
     init {
         playlistRepository.getPlaylistUpdateTrigger().observeForever(playlistUpdateObserver)
@@ -44,21 +51,36 @@ class PlaylistPageViewModel(application: Application) : AndroidViewModel(applica
         playlistRepository.getPlaylistUpdateTrigger().removeObserver(playlistUpdateObserver)
     }
 
-    fun getPlaylistMissingEvent(): LiveData<Boolean?> = playlistMissingEvent
+    fun getPlaylistMissingEvent(): LiveData<Boolean?> = missingLive
+
+    fun missingEvent(): StateFlow<Boolean?> = missingState
 
     fun clearPlaylistMissingEvent() {
-        playlistMissingEvent.value = false
+        missingState.value = false
     }
 
     fun getPlaylistSongLiveList(): LiveData<List<Child>?> {
-        if (songLiveList.value == null && playlist != null) {
+        loadIfNeeded()
+        return songLive
+    }
+
+    /** The current list, starting a fetch first if the page has none, as getPlaylistSongLiveList does. */
+    fun currentSongList(): List<Child>? {
+        loadIfNeeded()
+        return songState.value
+    }
+
+    private fun loadIfNeeded() {
+        if (songState.value == null && playlist != null) {
             refreshSongs()
         }
-        return songLiveList
     }
 
     /** The list as it stands, without starting a fetch. */
-    fun songs(): LiveData<List<Child>?> = songLiveList
+    fun songs(): StateFlow<List<Child>?> = songState
+
+    /** The list as an observable LiveData, without starting a fetch. */
+    fun songsLive(): LiveData<List<Child>?> = songLive
 
     fun refreshSongs() {
         val current = playlist ?: return
@@ -78,12 +100,12 @@ class PlaylistPageViewModel(application: Application) : AndroidViewModel(applica
                 if (now == null || forPlaylist != now.id) return
                 val movedPast = forPlaylist == writingPlaylistId || sequence != fetchSequence
                 if (songs == null) {
-                    if (!movedPast && songLiveList.value == null) playlistMissing(forPlaylist)
+                    if (!movedPast && songState.value == null) playlistMissing(forPlaylist)
                     return
                 }
-                if (movedPast && songLiveList.value != null) return
+                if (movedPast && songState.value != null) return
                 publishedSequence = sequence
-                songLiveList.value = songs
+                songState.value = songs
             }
         })
     }
@@ -98,7 +120,7 @@ class PlaylistPageViewModel(application: Application) : AndroidViewModel(applica
      * since a second request could reach the server first.
      */
     fun removeSong(playlistId: String, index: Int, callback: PlaylistRepository.AddToPlaylistCallback) {
-        val songs = songLiveList.value
+        val songs = songState.value
         val current = playlist
         if (writingPlaylistId != null || current == null || current.id != playlistId ||
             songs == null || index < 0 || index >= songs.size
@@ -111,14 +133,14 @@ class PlaylistPageViewModel(application: Application) : AndroidViewModel(applica
         publishedSequence = ++fetchSequence
         val shorter = ArrayList(songs)
         val removed = shorter.removeAt(index)
-        songLiveList.value = shorter
+        songState.value = shorter
 
         playlistRepository.removeSongFromPlaylist(playlistId, index, object : PlaylistRepository.AddToPlaylistCallback {
             override fun onSuccess() {
                 // A read issued meanwhile can have replaced the list with one from before the
                 // delete, which is dropped again here; any other list gets a fresh read, with
                 // the flag up until it lands.
-                val now = songLiveList.value
+                val now = songState.value
                 val nowPlaylist = playlist
                 if (now === shorter || nowPlaylist == null || nowPlaylist.id != playlistId) {
                     writingPlaylistId = null
@@ -127,7 +149,7 @@ class PlaylistPageViewModel(application: Application) : AndroidViewModel(applica
                     publishedSequence = ++fetchSequence
                     val again = ArrayList(now)
                     again.removeAt(index)
-                    songLiveList.value = again
+                    songState.value = again
                 } else {
                     reconcileSongs(playlistId, true)
                 }
@@ -135,10 +157,10 @@ class PlaylistPageViewModel(application: Application) : AndroidViewModel(applica
             }
 
             override fun onFailure() {
-                if (songLiveList.value === shorter) {
+                if (songState.value === shorter) {
                     val restored = ArrayList(shorter)
                     restored.add(index, removed)
-                    songLiveList.value = restored
+                    songState.value = restored
                 }
                 reconcileSongs(playlistId, true)
                 callback.onFailure()
@@ -187,7 +209,7 @@ class PlaylistPageViewModel(application: Application) : AndroidViewModel(applica
                         // its list was, as long as it still shows this playlist.
                         if (invalidateFetches(playlistId)) {
                             publishedSequence = fetchSequence
-                            songLiveList.value = restored
+                            songState.value = restored
                         }
                         callback.onSuccess()
                     }
@@ -235,7 +257,7 @@ class PlaylistPageViewModel(application: Application) : AndroidViewModel(applica
                 writingPlaylistId = null
                 if (songs != null && publishedSequence <= sequence && invalidateFetches(playlistId)) {
                     publishedSequence = fetchSequence
-                    songLiveList.value = songs
+                    songState.value = songs
                 }
             }
         })
@@ -252,7 +274,7 @@ class PlaylistPageViewModel(application: Application) : AndroidViewModel(applica
         val current = playlist
         if (current != null && current.id == playlistId && playlistId != reportedGonePlaylistId) {
             reportedGonePlaylistId = playlistId
-            playlistMissingEvent.value = true
+            missingState.value = true
         }
     }
 
@@ -265,8 +287,8 @@ class PlaylistPageViewModel(application: Application) : AndroidViewModel(applica
         reportedGonePlaylistId = null
 
         if (isDifferentPlaylist) {
-            songLiveList.value = null // Clear old data immediately
-            playlistMissingEvent.value = false
+            songState.value = null // Clear old data immediately
+            missingState.value = false
         }
     }
 
