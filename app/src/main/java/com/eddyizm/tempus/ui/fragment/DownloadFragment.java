@@ -147,7 +147,11 @@ public class DownloadFragment extends Fragment implements ClickCallback {
         });
 
         downloadViewModel.getRefreshResult().observe(getViewLifecycleOwner(), count -> {
-            if (count == null || bind == null) {
+            if (count == null) {
+                return;
+            }
+            downloadViewModel.consumeRefreshResult();
+            if (bind == null) {
                 return;
             }
 
