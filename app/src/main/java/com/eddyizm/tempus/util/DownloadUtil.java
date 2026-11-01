@@ -224,6 +224,8 @@ public final class DownloadUtil {
 
     private static synchronized void ensureDownloadManagerInitialized(Context context) {
         if (downloadManager == null) {
+            // Media3's DownloadManager needs a java.util.concurrent.Executor, so this fixed pool
+            // stays. It is not an IoLane, because a coroutine dispatcher cannot be passed as one.
             downloadManager = new DownloadManager(
                     context,
                     getDatabaseProvider(context),

@@ -31,14 +31,19 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
         listOf(DownloadStack(DownloadPreferences.getDefaultDownloadViewType(), null))
     )
 
-    // One-shot result of a refresh. Still a LiveData: see the note on the PR.
-    private val refreshResult = MutableLiveData<Int>()
+    // One-shot result of a refresh. The view clears it once shown (consumeRefreshResult), so a
+    // view that is recreated does not show the same toast again.
+    private val refreshResult = MutableLiveData<Int?>()
 
     fun getDownloadedTracks(): LiveData<List<Child>> = downloadedTracks.asLiveData()
 
     fun getViewStack(): LiveData<List<DownloadStack>> = viewStack.asLiveData()
 
-    fun getRefreshResult(): LiveData<Int> = refreshResult
+    fun getRefreshResult(): LiveData<Int?> = refreshResult
+
+    fun consumeRefreshResult() {
+        refreshResult.value = null
+    }
 
     fun initViewStack(level: DownloadStack) {
         viewStack.value = listOf(level)

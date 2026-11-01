@@ -18,6 +18,7 @@ import com.eddyizm.tempus.BuildConfig;
 import com.eddyizm.tempus.glide.CustomGlideRequest;
 import com.eddyizm.tempus.util.UiPreferences;
 import com.eddyizm.tempus.util.StreamingPreferences;
+import com.eddyizm.tempus.util.IoLane;
 import com.eddyizm.tempus.util.RadioCoverArtDownloader;
 
 import java.io.File;
@@ -27,14 +28,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.MessageDigest;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 public class AlbumArtContentProvider extends ContentProvider {
     public static final String AUTHORITY = BuildConfig.APPLICATION_ID + ".albumart.provider";
     public static final String ALBUM_ART = "albumArt";
-    private ExecutorService executor;
+    private IoLane lane;
 
     private static final UriMatcher uriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
 
@@ -90,7 +88,7 @@ public class AlbumArtContentProvider extends ContentProvider {
             ParcelFileDescriptor writeSide = pipe[1];
 
             // perform loading in background thread to avoid blocking UI
-            executor.execute(() -> {
+            lane.launchInterruptible(() -> {
                 try (OutputStream out = new ParcelFileDescriptor.AutoCloseOutputStream(writeSide)) {
 
                     // local radio cover: read directly from disk; otherwise fetch via Glide
@@ -135,22 +133,17 @@ public class AlbumArtContentProvider extends ContentProvider {
 
     @Override
     public boolean onCreate() {
-        executor = Executors.newFixedThreadPool(
-                Math.max(2, Runtime.getRuntime().availableProcessors() / 2)
-        );
+        lane = new IoLane(Math.max(2, Runtime.getRuntime().availableProcessors() / 2));
         return true;
     }
 
     @Override
     public void shutdown() {
-        if (executor != null) {
-            executor.shutdown();
-            try {
-                if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
-                    executor.shutdownNow();
-                }
-            } catch (InterruptedException e) {
-                executor.shutdownNow();
+        if (lane != null) {
+            lane.shutdown();
+            // Give queued artwork 5 seconds to finish, then cancel what is still running.
+            if (!lane.awaitTermination(5000)) {
+                lane.shutdownNow();
             }
         }
     }

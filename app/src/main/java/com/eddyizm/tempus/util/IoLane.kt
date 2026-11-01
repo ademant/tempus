@@ -5,9 +5,13 @@ import com.google.common.util.concurrent.SettableFuture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -31,6 +35,26 @@ class IoLane(parallelism: Int) {
     fun launch(block: Runnable) {
         if (closed.get()) return
         scope.launch { block.run() }
+    }
+
+    /**
+     * Like [launch], but [shutdownNow] interrupts the block while it runs, as Future.cancel(true)
+     * does. Use it for blocking calls that can be woken by an interrupt, such as a Future.get().
+     */
+    fun launchInterruptible(block: Runnable) {
+        if (closed.get()) return
+        scope.launch { runInterruptible { block.run() } }
+    }
+
+    /**
+     * Waits up to [timeoutMillis] for queued and running work to finish. Call it after [shutdown].
+     * Returns false if work was still running when the wait ended.
+     */
+    fun awaitTermination(timeoutMillis: Long): Boolean = runBlocking {
+        withTimeoutOrNull(timeoutMillis) {
+            scope.coroutineContext[Job]?.children?.forEach { it.join() }
+            true
+        } ?: false
     }
 
     /**
