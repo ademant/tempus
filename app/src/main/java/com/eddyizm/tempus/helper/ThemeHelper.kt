@@ -5,7 +5,6 @@ import android.annotation.SuppressLint
 import android.content.res.Configuration.UI_MODE_NIGHT_MASK
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import android.graphics.Color
-import android.os.Build
 import android.util.Log
 import android.util.TypedValue
 
@@ -139,10 +138,8 @@ object ThemeHelper {
                 com.google.android.material.R.attr.colorOutlineVariant
             )
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-                @Suppress("DEPRECATION") // Up to API 35
-                amoledOverlayAttrs.add(android.R.attr.navigationBarDividerColor)
-            }
+            @Suppress("DEPRECATION") // Up to API 35
+            amoledOverlayAttrs.add(android.R.attr.navigationBarDividerColor)
 
             val typedArray = activity.obtainStyledAttributes(amoledOverlayAttrs.toIntArray())
             typedArray.recycle()

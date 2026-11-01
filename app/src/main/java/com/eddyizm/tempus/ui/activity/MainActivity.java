@@ -13,7 +13,6 @@ import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.text.TextUtils;
@@ -888,22 +887,20 @@ public class MainActivity extends BaseActivity {
         }
 
         IoDispatch.launch(() -> {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
-                ShortcutManager shortcutManager = getSystemService(ShortcutManager.class);
+            ShortcutManager shortcutManager = getSystemService(ShortcutManager.class);
 
-                Intent intent = new Intent(this, LoginActivity.class);
-                intent.setAction(Intent.ACTION_VIEW);
+            Intent intent = new Intent(this, LoginActivity.class);
+            intent.setAction(Intent.ACTION_VIEW);
 
-                ShortcutInfo shortcut = new ShortcutInfo.Builder(this, "login_activity_shortcut")
-                        .setShortLabel(getString(R.string.la_shortcut_label))
-                        .setLongLabel(getString(R.string.la_shortcut_label))
-                        .setIcon(Icon.createWithResource(this, R.mipmap.ic_launcher))
-                        .setIntents(new Intent[]{intent})
-                        .build();
+            ShortcutInfo shortcut = new ShortcutInfo.Builder(this, "login_activity_shortcut")
+                    .setShortLabel(getString(R.string.la_shortcut_label))
+                    .setLongLabel(getString(R.string.la_shortcut_label))
+                    .setIcon(Icon.createWithResource(this, R.mipmap.ic_launcher))
+                    .setIntents(new Intent[]{intent})
+                    .build();
 
-                if (shortcutManager != null) {
-                    shortcutManager.setDynamicShortcuts(Collections.singletonList(shortcut));
-                }
+            if (shortcutManager != null) {
+                shortcutManager.setDynamicShortcuts(Collections.singletonList(shortcut));
             }
         });
     }

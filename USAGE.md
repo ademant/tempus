@@ -53,6 +53,7 @@
 
 **Important Notice**: This app is a Subsonic-compatible client and does not provide any music content itself. To use this application, you must have:
 
+- An Android phone or tablet running Android 10 or newer
 - An active Subsonic API server (or compatible service) already set up
 - Valid login credentials for your Subsonic server
 - Music content uploaded and organized on your server
