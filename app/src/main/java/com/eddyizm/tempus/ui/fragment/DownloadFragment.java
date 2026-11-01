@@ -123,7 +123,7 @@ public class DownloadFragment extends Fragment implements ClickCallback {
         bind.downloadFastScrollbar.setViewsToUse(R.layout.layout_fast_scrollbar, R.id.fastscroller_bubble, R.id.fastscroller_handle);
         bind.downloadFastScrollbar.setRecyclerView(bind.downloadedRecyclerView);
 
-        downloadViewModel.getDownloadedTracks(getViewLifecycleOwner()).observe(getViewLifecycleOwner(), songs -> {
+        downloadViewModel.getDownloadedTracks().observe(getViewLifecycleOwner(), songs -> {
             if (songs != null) {
                 if (songs.isEmpty()) {
                     if (bind != null) {
