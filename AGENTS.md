@@ -158,6 +158,9 @@ Rules:
 - **Commit discipline:** feature commits touch only the package and its resources. Hook commits touch only the seam files. Cherry-pick feature commits as a range and hooks separately, so conflicts stay in the hook lines.
 - Do not change behaviour of existing features to suit the integration. Add a seam instead.
 - Keep the feature on for all three flavors (no Google services involved).
+- **Newest SDK, direct support.** Dancebrainz code targets Android 17 (API 37) directly: use the current APIs and behaviour for `compileSdk`/`targetSdk` 37, and do not use deprecated APIs. minSdk is 24, so any API newer than 24 is guarded by `Build.VERSION.SDK_INT` (or an AndroidX compat call) and must pass `NewApi` lint without a baseline entry.
+- **Android 17 behaviour.** New screens work in resizable and multi-window layouts, since targetSdk 37 ignores orientation and aspect-ratio overrides on large screens. Local network access (a LAN-hosted Dancebrainz server) needs `ACCESS_LOCAL_NETWORK`, requested the same way the existing LAN code does it. New foreground services declare a `foregroundServiceType`, and notifications need `POST_NOTIFICATIONS` on API 33+.
+- **Separated files.** Every Dancebrainz file lives under the package or in a `dancebrainz`-prefixed resource file (see the rules above). Do not mix Dancebrainz code into existing classes, even when it is short; put it in the package and call it through a seam.
 
 ## Always
 - Run the unit tests and lint for every flavor a change touches, and for all three when touching shared code.
