@@ -99,7 +99,7 @@ class PlayerQueueBridge @JvmOverloads constructor(
                 val lanState by LanRemoteSession.state().observeAsState(LanRemoteSession.current())
                 val isLanActive = lanState?.active == true
 
-                val liveDownloads by downloadRepository.liveDownload.observeAsState(emptyList())
+                val liveDownloads by downloadRepository.getLiveDownload().observeAsState(emptyList())
                 val downloadedIds = remember(liveDownloads) {
                     liveDownloads?.mapNotNull { it.id }?.toSet() ?: emptySet()
                 }
