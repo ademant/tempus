@@ -8,7 +8,7 @@ import com.eddyizm.tempus.repository.ServerRepository
 
 class ServerViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = ServerRepository()
-    val allServers: LiveData<List<Server>> = repository.liveServer
+    val allServers: LiveData<List<Server>> = repository.getLiveServer()
 
     fun insertServer(server: Server) {
         repository.insert(server)
