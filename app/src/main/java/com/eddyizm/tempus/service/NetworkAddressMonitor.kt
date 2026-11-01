@@ -9,14 +9,15 @@ import android.util.Log
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.eddyizm.tempus.App
-import com.eddyizm.tempus.subsonic.base.ApiResponse
+import com.eddyizm.tempus.subsonic.awaitOrNull
 import com.eddyizm.tempus.subsonic.utils.CacheUtil
 import com.eddyizm.tempus.util.ConnectionUtil
 import com.eddyizm.tempus.util.MusicUtil
 import com.eddyizm.tempus.util.ServerPreferences
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import androidx.media3.common.util.UnstableApi
 
 private const val TAG = "BaseMediaService"
@@ -41,26 +42,23 @@ internal class NetworkAddressMonitor(
     @Volatile
     private var lastNetwork: Network? = null
 
+    // Pings deliver on the main thread, which is where the switch and the player restart run.
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
     private fun recheckAddress(network: Network, transport: Int, networkChanged: Boolean) {
         val server = ServerPreferences.getServer()
         val local = ServerPreferences.getLocalAddress()
         if (server.isNullOrEmpty() || local.isNullOrEmpty() || server == local || ConnectionUtil.isPingDeferred()) return
 
         val onLocal = ServerPreferences.isInUseServerAddressLocal()
-        App.getSubsonicClientInstance(local).systemClient.ping().enqueue(object : Callback<ApiResponse> {
-            override fun onResponse(call: Call<ApiResponse>, response: Response<ApiResponse>) {
-                onPinged(response.isSuccessful && response.body() != null)
-            }
-
-            override fun onFailure(call: Call<ApiResponse>, t: Throwable) {
-                onPinged(false)
-            }
-
-            private fun onPinged(answered: Boolean) {
-                val needsSwitch = answered != onLocal
-                if (needsSwitch || networkChanged) switchAddress(network, transport, onLocal, server, local, needsSwitch)
-            }
-        })
+        val call = App.getSubsonicClientInstance(local).systemClient.ping()
+        scope.launch {
+            // A failed ping counts as not answered, the same as an unsuccessful response.
+            val response = call.awaitOrNull()
+            val answered = response != null && response.isSuccessful && response.body() != null
+            val needsSwitch = answered != onLocal
+            if (needsSwitch || networkChanged) switchAddress(network, transport, onLocal, server, local, needsSwitch)
+        }
     }
 
     fun recheckAfterPlayerError() {
