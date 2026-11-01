@@ -23,6 +23,13 @@ import java.net.Socket
 import java.util.concurrent.*
 import javax.net.ssl.SSLServerSocket
 import javax.net.ssl.SSLSocket
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runInterruptible
 
 @androidx.annotation.OptIn(UnstableApi::class)
 class LanReceiverService : Service() {
@@ -62,7 +69,11 @@ class LanReceiverService : Service() {
 
     private val main = Handler(Looper.getMainLooper())
     @Volatile private var alive = true
-    private val workers = ThreadPoolExecutor(4, 4, 0, TimeUnit.SECONDS, ArrayBlockingQueue(4))
+    // Four sockets are served at once; up to four more wait. Anything beyond that is refused.
+    private val admitted = Semaphore(8)
+    private val serveScope = CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(4))
+    private val listenerScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var listenerJob: Job? = null
     private val watchers = Semaphore(2)
     private var server: SSLServerSocket? = null
     private val sockets = ConcurrentHashMap.newKeySet<Socket>()
@@ -106,29 +117,34 @@ class LanReceiverService : Service() {
         nsd = getSystemService(NsdManager::class.java)
         browserFuture = MediaBrowser.Builder(this, SessionToken(this, ComponentName(this, MediaService::class.java))).buildAsync()
         running = true
-        Thread({
-            try {
-                val listener = LanWire.context().serverSocketFactory.createServerSocket(0) as SSLServerSocket
-                listener.needClientAuth = true
-                server = listener
-                if (!alive) { listener.close(); return@Thread }
-                nsd.registerService(NsdServiceInfo().apply {
-                    serviceName = "Tempus ${name(this@LanReceiverService)}"
-                    serviceType = LanWire.TYPE
-                    port = listener.localPort
-                }, NsdManager.PROTOCOL_DNS_SD, registration)
-                while (alive) {
-                    val socket = listener.accept() as SSLSocket
-                    socket.soTimeout = 15000
-                    sockets.add(socket)
-                    try { workers.execute { serve(socket) } }
-                    catch (_: RejectedExecutionException) { sockets.remove(socket); socket.close() }
+        listenerJob = listenerScope.launch {
+            runInterruptible {
+                try {
+                    val listener = LanWire.context().serverSocketFactory.createServerSocket(0) as SSLServerSocket
+                    listener.needClientAuth = true
+                    server = listener
+                    if (!alive) { listener.close(); return@runInterruptible }
+                    nsd.registerService(NsdServiceInfo().apply {
+                        serviceName = "Tempus ${name(this@LanReceiverService)}"
+                        serviceType = LanWire.TYPE
+                        port = listener.localPort
+                    }, NsdManager.PROTOCOL_DNS_SD, registration)
+                    while (alive) {
+                        val socket = listener.accept() as SSLSocket
+                        socket.soTimeout = 15000
+                        sockets.add(socket)
+                        if (!admitted.tryAcquire()) { sockets.remove(socket); socket.close(); continue }
+                        serveScope.launch {
+                            try { runInterruptible { serve(socket) } }
+                            finally { admitted.release() }
+                        }
+                    }
+                } catch (e: Exception) {
+                    LanDiagnostics.record("Receiver listener failed", e)
+                    if (alive) fail(getString(R.string.lan_connection_error))
                 }
-            } catch (e: Exception) {
-                LanDiagnostics.record("Receiver listener failed", e)
-                if (alive) fail(getString(R.string.lan_connection_error))
             }
-        }, "tempus-lan-listener").start()
+        }
     }
 
     private fun fail(message: String) { error = message; main.post { stopSelf() } }
@@ -423,7 +439,9 @@ class LanReceiverService : Service() {
         closePairing()
         runCatching { server?.close() }
         sockets.forEach { runCatching { it.close() } }
-        workers.shutdownNow()
+        listenerJob?.cancel()
+        serveScope.cancel()
+        listenerScope.cancel()
         if (registered) runCatching { nsd.unregisterService(registration) }
         if (::browserFuture.isInitialized) MediaBrowser.releaseFuture(browserFuture)
         super.onDestroy()
