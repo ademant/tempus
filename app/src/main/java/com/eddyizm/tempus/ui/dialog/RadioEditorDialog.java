@@ -29,6 +29,7 @@ import com.eddyizm.tempus.databinding.ItemRadioSearchResultBinding;
 import com.eddyizm.tempus.databinding.PopupRadioSearchBinding;
 import com.eddyizm.tempus.glide.CustomGlideRequest;
 import com.eddyizm.tempus.interfaces.RadioCallback;
+import com.eddyizm.tempus.radiobrowser.RadioBrowserCalls;
 import com.eddyizm.tempus.radiobrowser.RadioBrowserClient;
 import com.eddyizm.tempus.radiobrowser.RadioBrowserCountry;
 import com.eddyizm.tempus.radiobrowser.RadioBrowserStation;
@@ -232,27 +233,21 @@ public class RadioEditorDialog extends DialogFragment {
 
         if (!countryNames.isEmpty()) return;
 
-        RadioBrowserClient.getInstance().getCountries().enqueue(new retrofit2.Callback<List<RadioBrowserCountry>>() {
-            @Override
-            public void onResponse(@NonNull retrofit2.Call<List<RadioBrowserCountry>> call, @NonNull retrofit2.Response<List<RadioBrowserCountry>> response) {
-                if (!isAdded() || popupBind == null) return;
-                if (response.isSuccessful() && response.body() != null) {
-                    countryNames.clear();
-                    for (RadioBrowserCountry c : response.body()) {
-                        if (c.stationCount > 0) {
-                            countryNames.add(c.name);
-                        }
-                    }
-                    Collections.sort(countryNames, String.CASE_INSENSITIVE_ORDER);
-                    if (popupBind.popupCountryList.getVisibility() == View.VISIBLE) {
-                        showCountryList(popupBind.popupCountryDropdown.getText() != null
-                                ? popupBind.popupCountryDropdown.getText().toString() : "");
+        RadioBrowserCalls.enqueue(this, RadioBrowserClient.getInstance().getCountries(), (response, error) -> {
+            if (response == null) return;
+            if (!isAdded() || popupBind == null) return;
+            if (response.isSuccessful() && response.body() != null) {
+                countryNames.clear();
+                for (RadioBrowserCountry c : response.body()) {
+                    if (c.stationCount > 0) {
+                        countryNames.add(c.name);
                     }
                 }
-            }
-
-            @Override
-            public void onFailure(@NonNull retrofit2.Call<List<RadioBrowserCountry>> call, @NonNull Throwable t) {
+                Collections.sort(countryNames, String.CASE_INSENSITIVE_ORDER);
+                if (popupBind.popupCountryList.getVisibility() == View.VISIBLE) {
+                    showCountryList(popupBind.popupCountryDropdown.getText() != null
+                            ? popupBind.popupCountryDropdown.getText().toString() : "");
+                }
             }
         });
     }
@@ -316,28 +311,24 @@ public class RadioEditorDialog extends DialogFragment {
             call = RadioBrowserClient.getInstance().searchByName(query);
         }
 
-        call.enqueue(new retrofit2.Callback<List<RadioBrowserStation>>() {
-            @Override
-            public void onResponse(@NonNull retrofit2.Call<List<RadioBrowserStation>> call, @NonNull retrofit2.Response<List<RadioBrowserStation>> response) {
-                if (!isAdded() || popupBind == null) return;
-                popupBind.popupProgressBar.setVisibility(View.GONE);
-                if (response.isSuccessful() && response.body() != null && !response.body().isEmpty()) {
-                    searchAdapter.setItems(response.body());
-                    popupBind.popupResultsRecycler.setVisibility(View.VISIBLE);
-                    popupBind.popupEmptyResults.setVisibility(View.GONE);
-                } else {
-                    searchAdapter.setItems(Collections.emptyList());
-                    popupBind.popupResultsRecycler.setVisibility(View.GONE);
-                    popupBind.popupEmptyResults.setVisibility(View.VISIBLE);
-                }
-            }
-
-            @Override
-            public void onFailure(@NonNull retrofit2.Call<List<RadioBrowserStation>> call, @NonNull Throwable t) {
+        RadioBrowserCalls.enqueue(this, call, (response, error) -> {
+            if (error != null) {
                 if (!isAdded() || popupBind == null) return;
                 popupBind.popupProgressBar.setVisibility(View.GONE);
                 popupBind.popupEmptyResults.setVisibility(View.VISIBLE);
-                Toast.makeText(requireContext(), getString(R.string.radio_search_error, t.getMessage()), Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), getString(R.string.radio_search_error, error.getMessage()), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (!isAdded() || popupBind == null) return;
+            popupBind.popupProgressBar.setVisibility(View.GONE);
+            if (response.isSuccessful() && response.body() != null && !response.body().isEmpty()) {
+                searchAdapter.setItems(response.body());
+                popupBind.popupResultsRecycler.setVisibility(View.VISIBLE);
+                popupBind.popupEmptyResults.setVisibility(View.GONE);
+            } else {
+                searchAdapter.setItems(Collections.emptyList());
+                popupBind.popupResultsRecycler.setVisibility(View.GONE);
+                popupBind.popupEmptyResults.setVisibility(View.VISIBLE);
             }
         });
     }

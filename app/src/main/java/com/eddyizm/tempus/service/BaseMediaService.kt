@@ -234,14 +234,14 @@ open class BaseMediaService : MediaLibraryService(), MediaManager.QueueTarget {
 
             val addressWhenMapped = ServerPreferences.getInUseServerAddress()
             val queueRepository = QueueRepository()
-            val storedQueue = queueRepository.media
+            val storedQueue = queueRepository.getMedia()
             if (storedQueue.isNullOrEmpty()) return@launch
 
             val mediaItems = MappingUtil.mapMediaItems(storedQueue)
             if (mediaItems.isEmpty()) return@launch
 
             val lastPlayed = try {
-                queueRepository.lastPlayedMedia
+                queueRepository.getLastPlayedMedia()
             } catch (_: Exception) {
                 null
             }
